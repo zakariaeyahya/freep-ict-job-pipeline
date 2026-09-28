@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0",
+  "identity": {
+    "internal_job_id": "job-1242",
+    "source_job_id": "freep-88208",
+    "canonical_url": "https://www.freep.nl/opdracht/88208",
+    "source": "freep"
+  },
+  "core": {
+    "title": "Business Analyst",
+    "client_name": "Sopra Steria",
+    "description_original": "Business Analyst voor bancair project.",
+    "description_clean": "Business Analyst for a banking project."
+  },
+  "publication": {
+    "publication_datetime": "2025-09-27T11:08:00+02:00",
+    "closing_datetime": "2025-10-09T23:59:00+02:00",
+    "timezone": "Europe/Amsterdam",
+    "status": "open"
+  },
+  "delivery": {
+    "location": "Marrakech, Morocco",
+    "remote_policy": "hybrid",
+    "hours_min": 32,
+    "hours_max": 40,
+    "start_date": null,
+    "end_date": null,
+    "extension_options": null
+  },
+  "selection": {
+    "hard_requirements": [
+      {
+        "text": "Minimaal 3 jaar ervaring als business analist",
+        "evidence_ref": "src-1242-1"
+      }
+    ],
+    "wishes": [],
+    "award_criteria": [
+      {
+        "text": "CV en motivatie (100%)",
+        "evidence_ref": "src-1242-2"
+      }
+    ],
+    "competencies": [
+      {
+        "text": "Communicatieve vaardigheden",
+        "evidence_ref": "src-1242-3"
+      }
+    ]
+  },
+  "profile": {
+    "education": [],
+    "experience": [],
+    "skills": [
+      "Requirements engineering",
+      "UML"
+    ],
+    "methods": [],
+    "certifications": [],
+    "languages": [
+      "English"
+    ]
+  },
+  "commercial": {
+    "rate_min": null,
+    "rate_max": null,
+    "currency": "EUR",
+    "vat_basis": null,
+    "travel_cost_policy": null
+  },
+  "engagement": {
+    "contract_type": "freelance",
+    "zzp_allowed": true,
+    "screening": null,
+    "vog": null,
+    "nationality_constraints": null,
+    "supplier_conditions": null
+  },
+  "procedure": {
+    "positions": 1,
+    "max_candidates": null,
+    "interview_window": null,
+    "submission_instructions": null
+  },
+  "quality": {
+    "completeness_status": "complete_within_scan_window",
+    "validation_errors": [],
+    "source_evidence": [
+      "src-1242-1",
+      "src-1242-2",
+      "src-1242-3"
+    ],
+    "confidence_per_field": null
+  },
+  "version": {
+    "first_seen_at": "2025-09-15T09:00:00+02:00",
+    "last_seen_at": "2025-09-27T11:08:00+02:00",
+    "changed_at": "2025-09-27T11:08:00+02:00",
+    "content_hash": "sha256:1242f6a7b8",
+    "record_version": 2,
+    "observation_state": "active"
+  },
+  "attachments": [],
+  "change_type": "changed"
+}

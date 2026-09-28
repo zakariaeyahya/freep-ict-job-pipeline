@@ -1,0 +1,106 @@
+{
+  "schema_version": "1.0",
+  "identity": {
+    "internal_job_id": "job-1245",
+    "source_job_id": "freep-88211",
+    "canonical_url": "https://www.freep.nl/opdracht/88211",
+    "source": "freep"
+  },
+  "core": {
+    "title": "Full Stack Developer",
+    "client_name": "Thales",
+    "description_original": "Full Stack Developer voor defensieproject.",
+    "description_clean": "Full Stack Developer for a defense sector project."
+  },
+  "publication": {
+    "publication_datetime": "2025-09-28T10:05:00+02:00",
+    "closing_datetime": "2025-10-15T23:59:00+02:00",
+    "timezone": "Europe/Amsterdam",
+    "status": "open"
+  },
+  "delivery": {
+    "location": "Tanger, Morocco",
+    "remote_policy": "hybrid",
+    "hours_min": 32,
+    "hours_max": 40,
+    "start_date": null,
+    "end_date": null,
+    "extension_options": null
+  },
+  "selection": {
+    "hard_requirements": [
+      {
+        "text": "Minimaal 3 jaar ervaring met React en Node.js",
+        "evidence_ref": "src-1245-1"
+      }
+    ],
+    "wishes": [],
+    "award_criteria": [
+      {
+        "text": "CV en motivatie (100%)",
+        "evidence_ref": "src-1245-2"
+      }
+    ],
+    "competencies": [
+      {
+        "text": "Teamwork",
+        "evidence_ref": "src-1245-3"
+      }
+    ]
+  },
+  "profile": {
+    "education": [],
+    "experience": [],
+    "skills": [
+      "React",
+      "Node.js",
+      "TypeScript"
+    ],
+    "methods": [],
+    "certifications": [],
+    "languages": [
+      "English"
+    ]
+  },
+  "commercial": {
+    "rate_min": 60,
+    "rate_max": 80,
+    "currency": "EUR",
+    "vat_basis": null,
+    "travel_cost_policy": null
+  },
+  "engagement": {
+    "contract_type": "freelance",
+    "zzp_allowed": true,
+    "screening": null,
+    "vog": null,
+    "nationality_constraints": null,
+    "supplier_conditions": null
+  },
+  "procedure": {
+    "positions": 1,
+    "max_candidates": null,
+    "interview_window": null,
+    "submission_instructions": null
+  },
+  "quality": {
+    "completeness_status": "complete_within_scan_window",
+    "validation_errors": [],
+    "source_evidence": [
+      "src-1245-1",
+      "src-1245-2",
+      "src-1245-3"
+    ],
+    "confidence_per_field": null
+  },
+  "version": {
+    "first_seen_at": "2025-09-28T10:05:00+02:00",
+    "last_seen_at": "2025-09-28T10:05:00+02:00",
+    "changed_at": null,
+    "content_hash": "sha256:1245c3d4e5",
+    "record_version": 1,
+    "observation_state": "active"
+  },
+  "attachments": [],
+  "change_type": "new"
+}
