@@ -69,8 +69,8 @@ class JobRecordMapper:
         return {
             "location": job.province,
             "remote_policy": None,
-            "hours_min": None,
-            "hours_max": None,
+            "hours_min": job.hours_min,
+            "hours_max": job.hours_max,
             "start_date": job.start_date,
             "end_date": job.end_date,
             "extension_options": None,
@@ -101,8 +101,8 @@ class JobRecordMapper:
     @staticmethod
     def _commercial(job: Any) -> dict:
         return {
-            "rate_min": None,
-            "rate_max": None,
+            "rate_min": job.rate_min,
+            "rate_max": job.rate_max,
             "currency": "EUR" if job.rate else None,
             "vat_basis": None,
             "travel_cost_policy": None,

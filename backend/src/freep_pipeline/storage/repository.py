@@ -13,6 +13,7 @@ from config.logging_config import get_logger
 from config.settings import DATABASE_URL
 from src.freep_pipeline.models.job import ParsedJob
 from src.freep_pipeline.models.scan import ScanReport
+from src.freep_pipeline.normalization.normalizer import JobNormalizer
 from src.freep_pipeline.storage.models import Base, JobCurrent, JobObservation
 from src.freep_pipeline.storage.scan_models import ScanError, ScanRoute
 from src.freep_pipeline.storage.scan_models import ScanRun as ScanRunModel
@@ -28,10 +29,16 @@ class JobRepository:
         self._engine = create_engine(database_url)
         self._session_factory: sessionmaker[Session] = sessionmaker(bind=self._engine)
         self._change_tracker = ChangeTracker()
+        self._normalizer = JobNormalizer()
 
     def create_schema(self) -> None:
-        """Create tables if they do not exist yet. Use Alembic migrations
-        for schema changes after the first deploy."""
+        """Create tables if they do not exist yet — used for disposable
+        test databases (SQLite, see tests/test_scan_recovery.py) where a
+        fresh schema is created and thrown away per test. For the real
+        Postgres database, schema changes go through Alembic migrations
+        (migrations/) instead; this method is a no-op there once the
+        initial migration has been stamped, since the tables already
+        exist."""
         Base.metadata.create_all(self._engine)
         logger.info("Database schema ensured")
 
@@ -102,6 +109,8 @@ class JobRepository:
                 previous_hash=existing.content_hash if existing else None,
                 new_hash=content_hash,
             )
+            rate_min, rate_max = self._normalizer.normalize_rate(job.rate)
+            hours_min, hours_max = self._normalizer.normalize_hours(job.hours_per_week)
 
             if existing:
                 existing.title = job.title
@@ -115,6 +124,10 @@ class JobRepository:
                 existing.description_original = job.description_original
                 existing.hard_requirements = job.hard_requirements
                 existing.wishes = job.wishes
+                existing.rate_min = rate_min
+                existing.rate_max = rate_max
+                existing.hours_min = hours_min
+                existing.hours_max = hours_max
                 existing.content_hash = content_hash
                 existing.change_type = change_type
                 existing.status = "open"
@@ -137,6 +150,10 @@ class JobRepository:
                     description_original=job.description_original,
                     hard_requirements=job.hard_requirements,
                     wishes=job.wishes,
+                    rate_min=rate_min,
+                    rate_max=rate_max,
+                    hours_min=hours_min,
+                    hours_max=hours_max,
                     status="open",
                     change_type="new",
                     consecutive_absences=0,

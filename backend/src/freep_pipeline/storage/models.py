@@ -69,6 +69,15 @@ class JobCurrent(Base):
     hard_requirements: Mapped[list] = mapped_column(JSON, default=list)
     wishes: Mapped[list] = mapped_column(JSON, default=list)
 
+    # Structured values derived from the free-text rate/hours_per_week
+    # fields (JobNormalizer). Never replaces the original text — brief
+    # §4.4: "retain the original text alongside each normalised value".
+    # Null when the source text didn't match a recognisable pattern.
+    rate_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rate_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    hours_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    hours_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     status: Mapped[str] = mapped_column(String(32), default="open")
     change_type: Mapped[str] = mapped_column(String(32), default="new")
 
