@@ -11,6 +11,7 @@ from config.settings import HTTP_TIMEOUT_SECONDS, HTTP_USER_AGENT
 logger = get_logger(__name__)
 
 
+
 class FreepHttpClient:
     """Fetches and parses raw HTML pages from Freep."""
 
@@ -26,3 +27,19 @@ class FreepHttpClient:
         response.raise_for_status()
 
         return BeautifulSoup(response.text, "html.parser")
+
+
+if __name__ == "__main__":
+    import sys
+    DEFAULT_TEST_URL = "https://www.freep.nl/opdracht/ai-developer-1"
+
+
+    url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_TEST_URL
+
+    client = FreepHttpClient()
+    soup = client.get_detail_soup(url)
+
+    title = soup.select_one("h1")
+    print(f"Fetched {url}")
+    print(f"HTML length: {len(str(soup))}")
+    print(f"<h1> found: {title.get_text(strip=True) if title else None}")
