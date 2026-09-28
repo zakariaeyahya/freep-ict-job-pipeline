@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 from config.logging_config import get_logger
 from config.settings import HTTP_REQUEST_DELAY_SECONDS
-from freep_pipeline.discovery.freep_discovery import FreepDiscovery
+from src.freep_pipeline.discovery.freep_discovery import FreepDiscovery
 from freep_pipeline.fetching.http_client import FreepHttpClient
 from freep_pipeline.models.job import ParsedJob
 from freep_pipeline.parsing.job_parser import JobParser
