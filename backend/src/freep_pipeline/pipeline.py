@@ -97,11 +97,27 @@ class ScanPipeline:
 
     def _discover(self, report: ScanReport) -> list[RawJobLink]:
         """Fetch the one known source route (Freep's homepage __NUXT_DATA__
-        payload) and record its outcome, per AC01/AC02."""
+        payload) and record its outcome, per AC01/AC02.
+
+        A route only counts as "success" when coverage is confirmed — i.e.
+        the number of jobs found matches what Freep itself displays for the
+        ICT filter (AC03). If the fetch worked but coverage could not be
+        confirmed, the route is "partial", not "success": we cannot
+        demonstrate we found everything."""
         try:
-            links = self._discovery.discover_job_links()
-            report.routes.append(RouteVisit(url=FREEP_START_URL, pages_visited=1, result="success"))
-            return links
+            result = self._discovery.discover_job_links()
+            route_result = "success" if result.coverage_confirmed else "partial"
+            error = (
+                None
+                if result.coverage_confirmed
+                else f"coverage not confirmed: found {len(result.links)}, site displays {result.displayed_count}"
+            )
+            report.routes.append(
+                RouteVisit(url=FREEP_START_URL, pages_visited=1, result=route_result, error=error)
+            )
+            if not result.coverage_confirmed:
+                report.add_error(FREEP_START_URL, error)
+            return result.links
         except Exception as exc:
             logger.exception("Discovery failed")
             report.routes.append(

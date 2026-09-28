@@ -22,6 +22,7 @@ from config.settings import (
     HTTP_USER_AGENT,
     ICT_FILTER_LABEL,
 )
+from src.freep_pipeline.discovery.coverage_checker import CoverageChecker
 from src.freep_pipeline.discovery.nuxt_data_decoder import NuxtDataDecoder
 from src.freep_pipeline.models.job import RawJobLink
 
@@ -33,14 +34,26 @@ _NUXT_DATA_SCRIPT_PATTERN = re.compile(
 )
 
 
+class DiscoveryResult:
+    """Discovered links plus the coverage signal for that discovery run
+    (AC02/AC03: a measurable, testable coverage check, not an assumption)."""
+
+    def __init__(self, links: list[RawJobLink], coverage_confirmed: bool, displayed_count: int | None) -> None:
+        self.links = links
+        self.coverage_confirmed = coverage_confirmed
+        self.displayed_count = displayed_count
+
+
 class FreepDiscovery:
     """Discovers every ICT job link currently listed on Freep."""
 
     def __init__(self) -> None:
         self._decoder = NuxtDataDecoder()
+        self._coverage_checker = CoverageChecker()
 
-    def discover_job_links(self) -> list[RawJobLink]:
-        """Fetch Freep's homepage and return every unique ICT job link."""
+    def discover_job_links(self) -> DiscoveryResult:
+        """Fetch Freep's homepage and return every unique ICT job link,
+        plus whether the count found matches what the site itself displays."""
         html = self._fetch_homepage_html()
         raw_array = self._extract_nuxt_data(html)
         decoded = self._decoder.decode(raw_array)
@@ -53,12 +66,19 @@ class FreepDiscovery:
             for job in ict_jobs
         ]
 
+        displayed_count = self._coverage_checker.extract_displayed_count(html)
+        coverage_confirmed = self._coverage_checker.check_coverage(
+            displayed_count=displayed_count, discovered_count=len(links)
+        )
+
         logger.info(
-            "Discovery finished: %d unique ICT job links found (of %d total listed jobs)",
+            "Discovery finished: %d unique ICT job links found (of %d total listed jobs), "
+            "coverage_confirmed=%s",
             len(links),
             len(jobs_by_slug),
+            coverage_confirmed,
         )
-        return links
+        return DiscoveryResult(links=links, coverage_confirmed=coverage_confirmed, displayed_count=displayed_count)
 
     def _fetch_homepage_html(self) -> str:
         response = requests.get(
@@ -105,8 +125,9 @@ class FreepDiscovery:
 
 if __name__ == "__main__":
     discovery = FreepDiscovery()
-    links = discovery.discover_job_links()
+    result = discovery.discover_job_links()
 
-    print(f"{len(links)} ICT job links found:\n")
-    for link in links:
+    print(f"{len(result.links)} ICT job links found (site displays {result.displayed_count})")
+    print(f"Coverage confirmed: {result.coverage_confirmed}\n")
+    for link in result.links:
         print(" -", link.source_url)
