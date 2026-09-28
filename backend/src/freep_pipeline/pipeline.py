@@ -1,5 +1,5 @@
 """Orchestrates one full scan run: discover, fetch, parse, validate, store,
-and record a scan report (AC01, AC10, AC11).
+and record a scan report (AC01, AC10, AC11, AC12, AC14).
 
 Migrated from the notebook's orchestration cell (cell 27: loop over all
 discovered URLs, fetch + parse each one).
@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 
 from config.logging_config import get_logger
 from config.settings import FREEP_START_URL, HTTP_REQUEST_DELAY_SECONDS
+from src.freep_pipeline.contracts.job_record_mapper import JobRecordMapper
+from src.freep_pipeline.contracts.schema_validator import SchemaValidator, job_record_validator
 from src.freep_pipeline.discovery.freep_discovery import FreepDiscovery
 from src.freep_pipeline.fetching.http_client import FreepHttpClient
 from src.freep_pipeline.models.job import ParsedJob, RawJobLink
@@ -38,12 +40,16 @@ class ScanPipeline:
         parser: JobParser | None = None,
         validator: JobValidator | None = None,
         repository: JobRepository | None = None,
+        schema_validator: SchemaValidator | None = None,
+        record_mapper: JobRecordMapper | None = None,
     ) -> None:
         self._discovery = discovery or FreepDiscovery()
         self._http_client = http_client or FreepHttpClient()
         self._parser = parser or JobParser()
         self._validator = validator or JobValidator()
         self._repository = repository or JobRepository()
+        self._schema_validator = schema_validator or job_record_validator()
+        self._record_mapper = record_mapper or JobRecordMapper()
 
     def run(self) -> str:
         """Run one full scan: discover links, fetch+parse each job, validate,
@@ -71,11 +77,20 @@ class ScanPipeline:
         report.counts.discovered = len(links)
         report.counts.processed = len(parsed_jobs)
 
+        schema_violation_count = 0
         for job in valid_jobs:
             content_hash = self._compute_content_hash(job)
             self._repository.save_observation(job, scan_id=report.scan_id, content_hash=content_hash)
-            change_type = self._repository.upsert_current(job, content_hash=content_hash)
+            change_type, current = self._repository.upsert_current(job, content_hash=content_hash)
             self._count_change(report, change_type)
+
+            schema_result = self._schema_validator.validate(self._record_mapper.to_job_record(current))
+            if not schema_result.is_valid:
+                schema_violation_count += 1
+                report.add_error(
+                    job.source_job_id,
+                    f"published record failed schema validation: {'; '.join(schema_result.errors)}",
+                )
 
         # Only mark jobs absent when discovery actually ran — a failed
         # discovery route must never be mistaken for jobs having closed
@@ -88,9 +103,23 @@ class ScanPipeline:
 
         report.ended_at = datetime.now(timezone.utc)
         report.scan_status = self._determine_scan_status(report, expected_route_count=1)
-        report.published = report.scan_status == "COMPLETE_WITHIN_SCAN_WINDOW"
-        if not report.published:
-            report.published_reason = f"scan_status was {report.scan_status}, not COMPLETE_WITHIN_SCAN_WINDOW"
+
+        # AC14: never publish a new production version when a critical
+        # validation fails, even if the scan itself otherwise completed
+        # (brief §6.2 FAILED row: "Do not publish a new production
+        # version"). A schema violation on a published record is exactly
+        # that critical failure — it means the contract every downstream
+        # consumer (API, UI, matching tool) relies on was broken.
+        if schema_violation_count > 0:
+            report.published = False
+            report.published_reason = (
+                f"{schema_violation_count} published record(s) failed schema validation "
+                f"(AC12/AC14) - see errors for detail"
+            )
+        else:
+            report.published = report.scan_status == "COMPLETE_WITHIN_SCAN_WINDOW"
+            if not report.published:
+                report.published_reason = f"scan_status was {report.scan_status}, not COMPLETE_WITHIN_SCAN_WINDOW"
 
         self._repository.save_scan_run(report)
 

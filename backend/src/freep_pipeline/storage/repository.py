@@ -59,10 +59,12 @@ class JobRepository:
             session.add(observation)
             session.commit()
 
-    def upsert_current(self, job: ParsedJob, content_hash: str) -> str:
+    def upsert_current(self, job: ParsedJob, content_hash: str) -> tuple[str, JobCurrent]:
         """Update the jobs_current projection from a new observation,
         deriving change_type by comparing against the previous state.
-        Returns the derived change_type."""
+        Returns (change_type, the resulting JobCurrent row, detached from
+        the session so the caller can read it after this method returns —
+        e.g. to schema-validate what was just published, AC12/AC14)."""
         with self._session_factory() as session:
             existing = session.get(JobCurrent, job.source_job_id)
             now = datetime.now(timezone.utc)
@@ -90,35 +92,37 @@ class JobRepository:
                 existing.consecutive_absences = 0
                 existing.record_version += 1
                 existing.last_seen_at = now
+                current = existing
             else:
-                session.add(
-                    JobCurrent(
-                        source_job_id=job.source_job_id,
-                        source_url=job.source_url,
-                        title=job.title,
-                        company=job.company,
-                        rate=job.rate,
-                        province=job.province,
-                        segment=job.segment,
-                        hours_per_week=job.hours_per_week,
-                        start_date=job.start_date,
-                        end_date=job.end_date,
-                        description_original=job.description_original,
-                        hard_requirements=job.hard_requirements,
-                        wishes=job.wishes,
-                        status="open",
-                        change_type="new",
-                        consecutive_absences=0,
-                        content_hash=content_hash,
-                        record_version=1,
-                        first_seen_at=now,
-                        last_seen_at=now,
-                    )
+                current = JobCurrent(
+                    source_job_id=job.source_job_id,
+                    source_url=job.source_url,
+                    title=job.title,
+                    company=job.company,
+                    rate=job.rate,
+                    province=job.province,
+                    segment=job.segment,
+                    hours_per_week=job.hours_per_week,
+                    start_date=job.start_date,
+                    end_date=job.end_date,
+                    description_original=job.description_original,
+                    hard_requirements=job.hard_requirements,
+                    wishes=job.wishes,
+                    status="open",
+                    change_type="new",
+                    consecutive_absences=0,
+                    content_hash=content_hash,
+                    record_version=1,
+                    first_seen_at=now,
+                    last_seen_at=now,
                 )
+                session.add(current)
 
             session.commit()
+            session.refresh(current)
+            session.expunge(current)
             logger.info("Upserted jobs_current for %s (%s)", job.source_job_id, change_type)
-            return change_type
+            return change_type, current
 
     def mark_absent_jobs(self, seen_source_job_ids: set[str]) -> dict[str, int]:
         """Mark every currently-open-or-unknown job NOT in
