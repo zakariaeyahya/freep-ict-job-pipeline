@@ -5,7 +5,7 @@ import { AppTopbar } from "@/components/layout/app-topbar";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex min-h-screen bg-[#F8FAFF] dark:bg-zinc-950">
       <AppSidebar />
       <div className="flex flex-1 flex-col">
         <AppTopbar />
