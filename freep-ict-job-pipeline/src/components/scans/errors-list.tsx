@@ -1,7 +1,7 @@
 import type { ScanError } from "@/lib/contracts/scan";
 import { RecoveryStatusBadge } from "@/components/scans/route-result-badge";
-import { SectionHeader } from "@/components/scans/section-header";
-import { WarningTriangleIcon } from "@/components/scans/icons";
+import { SectionHeader } from "@/components/layout/section-header";
+import { WarningTriangleIcon } from "@/components/icons";
 
 export function ErrorsList({ errors }: { errors: ScanError[] }) {
   if (errors.length === 0) {

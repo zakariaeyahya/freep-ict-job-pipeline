@@ -1,7 +1,7 @@
 import type { ConvergenceRound } from "@/lib/contracts/scan";
 import { formatDateTime } from "@/lib/format";
-import { SectionHeader } from "@/components/scans/section-header";
-import { ConvergeIcon } from "@/components/scans/icons";
+import { SectionHeader } from "@/components/layout/section-header";
+import { ConvergeIcon } from "@/components/icons";
 
 export function ConvergenceRounds({ rounds }: { rounds: ConvergenceRound[] }) {
   return (

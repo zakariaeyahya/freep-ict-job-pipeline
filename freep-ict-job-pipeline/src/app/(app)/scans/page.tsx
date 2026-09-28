@@ -6,8 +6,8 @@ import { CountsSummary } from "@/components/scans/counts-summary";
 import { RoutesTable } from "@/components/scans/routes-table";
 import { ErrorsList } from "@/components/scans/errors-list";
 import { IncompleteWarningBanner } from "@/components/scans/incomplete-warning-banner";
-import { SectionHeader } from "@/components/scans/section-header";
-import { BarChartIcon, DownloadIcon, MoreIcon } from "@/components/scans/icons";
+import { SectionHeader } from "@/components/layout/section-header";
+import { BarChartIcon, DownloadIcon, MoreIcon } from "@/components/icons";
 
 export default function ScanReportPage() {
   const scan = getLatestScan();

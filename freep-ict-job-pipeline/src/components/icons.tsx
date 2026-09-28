@@ -110,3 +110,60 @@ export function MoreIcon() {
     </svg>
   );
 }
+
+export function BriefcaseIcon() {
+  return (
+    <svg {...baseProps()}>
+      <rect x="3" y="7" width="18" height="13" rx="2" />
+      <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M3 12h18" />
+    </svg>
+  );
+}
+
+export function ListIcon() {
+  return (
+    <svg {...baseProps()}>
+      <path d="M8 6h13M8 12h13M8 18h13" />
+      <path d="M3 6h.01M3 12h.01M3 18h.01" />
+    </svg>
+  );
+}
+
+export function ShieldCheckIcon() {
+  return (
+    <svg {...baseProps()}>
+      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  );
+}
+
+export function FileIcon() {
+  return (
+    <svg {...baseProps()}>
+      <path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+      <path d="M14 3v5h5" />
+    </svg>
+  );
+}
+
+export function DatabaseIcon() {
+  return (
+    <svg {...baseProps()}>
+      <ellipse cx="12" cy="6" rx="8" ry="3" />
+      <path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6" />
+      <path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
+    </svg>
+  );
+}
+
+export function HistoryIcon() {
+  return (
+    <svg {...baseProps()}>
+      <path d="M3 12a9 9 0 1 0 3-6.7" />
+      <path d="M3 4v5h5" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}

@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 
 import type { ScanRun } from "@/lib/contracts/scan";
 import { formatDateTime, formatDuration } from "@/lib/format";
-import { SectionHeader } from "@/components/scans/section-header";
-import { CalendarIcon, ClockIcon, LinkIcon, SettingsIcon } from "@/components/scans/icons";
+import { SectionHeader } from "@/components/layout/section-header";
+import { CalendarIcon, ClockIcon, LinkIcon, SettingsIcon } from "@/components/icons";
 
 function Field({ icon, label, value }: { icon: ReactNode; label: string; value: ReactNode }) {
   return (

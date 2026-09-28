@@ -86,6 +86,21 @@
     "record_version": 1,
     "observation_state": "active"
   },
-  "attachments": [],
+  "attachments": [
+    {
+      "url": "https://www.freep.nl/opdracht/88213/functieomschrijving.pdf",
+      "name": "Functieomschrijving.pdf",
+      "type": "application/pdf",
+      "hash": "sha256:att1247a",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "url": "https://www.freep.nl/opdracht/88213/bijlage-nda.docx",
+      "name": "Bijlage NDA.docx",
+      "type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "hash": null,
+      "retrieval_status": "failed"
+    }
+  ],
   "change_type": "new"
 }

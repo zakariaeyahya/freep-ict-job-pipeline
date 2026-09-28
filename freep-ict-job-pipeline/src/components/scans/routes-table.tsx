@@ -1,7 +1,7 @@
 import type { RouteVisit } from "@/lib/contracts/scan";
 import { RouteResultBadge } from "@/components/scans/route-result-badge";
-import { SectionHeader } from "@/components/scans/section-header";
-import { MoreIcon, RouteIcon } from "@/components/scans/icons";
+import { SectionHeader } from "@/components/layout/section-header";
+import { MoreIcon, RouteIcon } from "@/components/icons";
 
 export function RoutesTable({ routes }: { routes: RouteVisit[] }) {
   return (
