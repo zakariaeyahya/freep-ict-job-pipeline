@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from config.logging_config import get_logger
-from freep_pipeline.pipeline import ScanPipeline
+from src.freep_pipeline.pipeline import ScanPipeline
 
 logger = get_logger(__name__)
 

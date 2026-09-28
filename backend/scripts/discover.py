@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from config.logging_config import get_logger
-from freep_pipeline.discovery.freep_discovery import FreepDiscovery
+from src.freep_pipeline.discovery.freep_discovery import FreepDiscovery
 
 logger = get_logger(__name__)
 

@@ -13,9 +13,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from config.logging_config import get_logger
-from freep_pipeline.fetching.http_client import FreepHttpClient
-from freep_pipeline.parsing.job_parser import JobParser
-from freep_pipeline.validation.validator import JobValidator
+from src.freep_pipeline.fetching.http_client import FreepHttpClient
+from src.freep_pipeline.parsing.job_parser import JobParser
+from src.freep_pipeline.validation.validator import JobValidator
 
 logger = get_logger(__name__)
 
