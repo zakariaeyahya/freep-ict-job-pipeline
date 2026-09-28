@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dreev.nl/schemas/freep/scan_run.schema.json",
+  "title": "ScanRun",
+  "description": "One published scan report. Mirrors freep-ict-job-pipeline/src/lib/contracts/scan.ts exactly (CLAUDE.md 'Final output > 1. Data contract'; brief §4.3/§6.2).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scan_id",
+    "started_at",
+    "ended_at",
+    "config",
+    "routes",
+    "convergence_rounds",
+    "counts",
+    "dedup_rule",
+    "scan_status",
+    "published",
+    "errors"
+  ],
+  "properties": {
+    "scan_id": { "type": "string", "minLength": 1 },
+    "started_at": { "type": "string", "format": "date-time" },
+    "ended_at": { "type": "string", "format": "date-time" },
+    "config": { "type": "string", "minLength": 1 },
+    "routes": { "type": "array", "items": { "$ref": "#/$defs/routeVisit" } },
+    "convergence_rounds": { "type": "array", "items": { "$ref": "#/$defs/convergenceRound" } },
+    "counts": { "$ref": "#/$defs/scanCounts" },
+    "dedup_rule": { "type": "string", "minLength": 1 },
+    "scan_status": { "$ref": "#/$defs/scanStatus" },
+    "published": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "reason"],
+      "properties": {
+        "value": { "type": "boolean" },
+        "reason": { "type": ["string", "null"] }
+      }
+    },
+    "errors": { "type": "array", "items": { "$ref": "#/$defs/scanError" } }
+  },
+  "$defs": {
+    "scanStatus": { "enum": ["COMPLETE_WITHIN_SCAN_WINDOW", "INCOMPLETE", "FAILED"] },
+    "routeResult": { "enum": ["success", "partial", "failed"] },
+    "recoveryStatus": { "enum": ["recovered", "unresolved"] },
+    "routeVisit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "pages_visited", "result", "error"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "pages_visited": { "type": "integer", "minimum": 0 },
+        "result": { "$ref": "#/$defs/routeResult" },
+        "error": { "type": ["string", "null"] }
+      }
+    },
+    "convergenceRound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["round", "new_routes_discovered", "converged", "observed_at"],
+      "properties": {
+        "round": { "type": "integer", "minimum": 1 },
+        "new_routes_discovered": { "type": "integer", "minimum": 0 },
+        "converged": { "type": "boolean" },
+        "observed_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "scanCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["discovered", "processed", "duplicates", "new", "changed", "closed", "temporarily_not_found", "errors"],
+      "properties": {
+        "discovered": { "type": "integer", "minimum": 0 },
+        "processed": { "type": "integer", "minimum": 0 },
+        "duplicates": { "type": "integer", "minimum": 0 },
+        "new": { "type": "integer", "minimum": 0 },
+        "changed": { "type": "integer", "minimum": 0 },
+        "closed": { "type": "integer", "minimum": 0 },
+        "temporarily_not_found": { "type": "integer", "minimum": 0 },
+        "errors": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "scanError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "reason", "retry_count", "recovery_status"],
+      "properties": {
+        "reference": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "retry_count": { "type": "integer", "minimum": 0 },
+        "recovery_status": { "$ref": "#/$defs/recoveryStatus" }
+      }
+    }
+  }
+}

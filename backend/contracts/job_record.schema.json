@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dreev.nl/schemas/freep/job_record.schema.json",
+  "title": "JobRecord",
+  "description": "One published Freep ICT job record. Mirrors freep-ict-job-pipeline/src/lib/contracts/job.ts exactly (CLAUDE.md 'Final output > 1. Data contract'; brief §4.2).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "identity",
+    "core",
+    "publication",
+    "delivery",
+    "selection",
+    "profile",
+    "commercial",
+    "engagement",
+    "procedure",
+    "quality",
+    "version",
+    "attachments",
+    "change_type"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$",
+      "description": "Semantic version of this schema. Bump on any breaking change to a published record's shape."
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["internal_job_id", "source_job_id", "canonical_url", "source"],
+      "properties": {
+        "internal_job_id": { "type": "string", "minLength": 1 },
+        "source_job_id": { "type": "string", "minLength": 1 },
+        "canonical_url": { "type": "string", "format": "uri" },
+        "source": { "type": "string", "minLength": 1 }
+      }
+    },
+    "core": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "client_name", "description_original", "description_clean"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "client_name": { "type": ["string", "null"] },
+        "description_original": { "type": ["string", "null"] },
+        "description_clean": { "type": ["string", "null"] }
+      }
+    },
+    "publication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publication_datetime", "closing_datetime", "timezone", "status"],
+      "properties": {
+        "publication_datetime": { "type": ["string", "null"], "format": "date-time" },
+        "closing_datetime": { "type": ["string", "null"], "format": "date-time" },
+        "timezone": { "type": "string", "minLength": 1 },
+        "status": { "$ref": "#/$defs/jobStatus" }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "location",
+        "remote_policy",
+        "hours_min",
+        "hours_max",
+        "start_date",
+        "end_date",
+        "extension_options"
+      ],
+      "properties": {
+        "location": { "type": ["string", "null"] },
+        "remote_policy": { "type": ["string", "null"] },
+        "hours_min": { "type": ["number", "null"] },
+        "hours_max": { "type": ["number", "null"] },
+        "start_date": { "type": ["string", "null"] },
+        "end_date": { "type": ["string", "null"] },
+        "extension_options": { "type": ["string", "null"] }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hard_requirements", "wishes", "award_criteria", "competencies"],
+      "properties": {
+        "hard_requirements": { "type": "array", "items": { "$ref": "#/$defs/evidencedText" } },
+        "wishes": { "type": "array", "items": { "$ref": "#/$defs/evidencedText" } },
+        "award_criteria": { "type": "array", "items": { "$ref": "#/$defs/evidencedText" } },
+        "competencies": { "type": "array", "items": { "$ref": "#/$defs/evidencedText" } }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["education", "experience", "skills", "methods", "certifications", "languages"],
+      "properties": {
+        "education": { "type": "array", "items": { "type": "string" } },
+        "experience": { "type": "array", "items": { "type": "string" } },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "methods": { "type": "array", "items": { "type": "string" } },
+        "certifications": { "type": "array", "items": { "type": "string" } },
+        "languages": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "commercial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rate_min", "rate_max", "currency", "vat_basis", "travel_cost_policy"],
+      "properties": {
+        "rate_min": { "type": ["number", "null"] },
+        "rate_max": { "type": ["number", "null"] },
+        "currency": { "type": ["string", "null"] },
+        "vat_basis": { "type": ["string", "null"] },
+        "travel_cost_policy": { "type": ["string", "null"] }
+      }
+    },
+    "engagement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_type",
+        "zzp_allowed",
+        "screening",
+        "vog",
+        "nationality_constraints",
+        "supplier_conditions"
+      ],
+      "properties": {
+        "contract_type": { "type": ["string", "null"] },
+        "zzp_allowed": { "type": ["boolean", "null"] },
+        "screening": { "type": ["string", "null"] },
+        "vog": { "type": ["boolean", "null"] },
+        "nationality_constraints": { "type": ["string", "null"] },
+        "supplier_conditions": { "type": ["string", "null"] }
+      }
+    },
+    "procedure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["positions", "max_candidates", "interview_window", "submission_instructions"],
+      "properties": {
+        "positions": { "type": ["integer", "null"] },
+        "max_candidates": { "type": ["integer", "null"] },
+        "interview_window": { "type": ["string", "null"] },
+        "submission_instructions": { "type": ["string", "null"] }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["completeness_status", "validation_errors", "source_evidence", "confidence_per_field"],
+      "properties": {
+        "completeness_status": { "$ref": "#/$defs/completenessStatus" },
+        "validation_errors": { "type": "array", "items": { "type": "string" } },
+        "source_evidence": { "type": "array", "items": { "type": "string" } },
+        "confidence_per_field": {
+          "type": ["object", "null"],
+          "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "first_seen_at",
+        "last_seen_at",
+        "changed_at",
+        "content_hash",
+        "record_version",
+        "observation_state"
+      ],
+      "properties": {
+        "first_seen_at": { "type": "string", "format": "date-time" },
+        "last_seen_at": { "type": "string", "format": "date-time" },
+        "changed_at": { "type": ["string", "null"], "format": "date-time" },
+        "content_hash": { "type": "string", "minLength": 1 },
+        "record_version": { "type": "integer", "minimum": 1 },
+        "observation_state": { "$ref": "#/$defs/observationState" }
+      }
+    },
+    "attachments": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/attachment" }
+    },
+    "change_type": { "$ref": "#/$defs/changeType" }
+  },
+  "$defs": {
+    "jobStatus": { "enum": ["open", "closed", "unknown"] },
+    "changeType": {
+      "enum": ["new", "changed", "unchanged", "closed", "temporarily_not_found", "uncertain"]
+    },
+    "completenessStatus": {
+      "enum": ["complete_within_scan_window", "incomplete", "failed"]
+    },
+    "observationState": {
+      "enum": ["active", "temporarily_not_found", "closed"]
+    },
+    "retrievalStatus": {
+      "enum": ["retrieved", "failed", "not_attempted"]
+    },
+    "evidencedText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "evidence_ref"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "evidence_ref": { "type": ["string", "null"] }
+      }
+    },
+    "attachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "name", "type", "hash", "retrieval_status"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "name": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "hash": { "type": ["string", "null"] },
+        "retrieval_status": { "$ref": "#/$defs/retrievalStatus" }
+      }
+    }
+  }
+}
