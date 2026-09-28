@@ -35,6 +35,35 @@ class JobRepository:
         Base.metadata.create_all(self._engine)
         logger.info("Database schema ensured")
 
+    def get_current_job(self, source_job_id: str) -> JobCurrent | None:
+        """Reads one job's current projection. Returns None if it does not
+        exist (the API maps that to 404, not this layer's concern)."""
+        with self._session_factory() as session:
+            job = session.get(JobCurrent, source_job_id)
+            if job is not None:
+                session.expunge(job)
+            return job
+
+    def list_current_jobs(
+        self,
+        status: str | None = None,
+        change_type: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[JobCurrent]:
+        """Reads the current projection, optionally filtered, for the
+        API's GET /jobs (brief §5.1: filter by status/change_type)."""
+        with self._session_factory() as session:
+            query = session.query(JobCurrent)
+            if status is not None:
+                query = query.filter(JobCurrent.status == status)
+            if change_type is not None:
+                query = query.filter(JobCurrent.change_type == change_type)
+            jobs = query.order_by(JobCurrent.source_job_id).offset(offset).limit(limit).all()
+            for job in jobs:
+                session.expunge(job)
+            return jobs
+
     def save_observation(self, job: ParsedJob, scan_id: str, content_hash: str) -> None:
         """Insert one immutable observation row. Never updates existing rows."""
         with self._session_factory() as session:
@@ -158,6 +187,22 @@ class JobRepository:
             session.commit()
 
         return counts
+
+    def get_last_published_scan(self) -> ScanRunModel | None:
+        """The most recently published (successful) scan, for GET /health's
+        freshness signal (brief §4.1 "Freshness and audit"). Deliberately
+        ignores unpublished scans — a FAILED or INCOMPLETE run must never
+        make the dataset look fresher than it is."""
+        with self._session_factory() as session:
+            scan = (
+                session.query(ScanRunModel)
+                .filter(ScanRunModel.published.is_(True))
+                .order_by(ScanRunModel.ended_at.desc())
+                .first()
+            )
+            if scan is not None:
+                session.expunge(scan)
+            return scan
 
     def save_scan_run(self, report: ScanReport) -> None:
         """Persist a finished scan run: window, routes, counts, errors and

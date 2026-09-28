@@ -77,3 +77,17 @@ DATABASE_URL = os.environ.get(
 # --------------------------------------------------------------------------
 
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
+
+# --------------------------------------------------------------------------
+# Auth (Keycloak, image quay.io/keycloak/keycloak:25.0)
+# --------------------------------------------------------------------------
+
+# The realm's issuer URL. Every access token's `iss` claim must match this
+# exactly, and the JWKS used to verify signatures is fetched from here.
+KEYCLOAK_ISSUER_URL = os.environ.get("KEYCLOAK_ISSUER_URL", "http://localhost:8080/realms/dreev")
+KEYCLOAK_JWKS_URL = f"{KEYCLOAK_ISSUER_URL}/protocol/openid-connect/certs"
+
+# The client_id this API represents as a resource server. Every access
+# token's `aud` claim must include this value, or the token was not
+# actually issued for this API and must be rejected.
+KEYCLOAK_API_AUDIENCE = os.environ.get("KEYCLOAK_API_AUDIENCE", "freep-pipeline-api")
