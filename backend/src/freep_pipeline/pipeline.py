@@ -14,11 +14,11 @@ from datetime import datetime, timezone
 from config.logging_config import get_logger
 from config.settings import HTTP_REQUEST_DELAY_SECONDS
 from src.freep_pipeline.discovery.freep_discovery import FreepDiscovery
-from freep_pipeline.fetching.http_client import FreepHttpClient
-from freep_pipeline.models.job import ParsedJob
-from freep_pipeline.parsing.job_parser import JobParser
-from freep_pipeline.storage.repository import JobRepository
-from freep_pipeline.validation.validator import JobValidator
+from src.freep_pipeline.fetching.http_client import FreepHttpClient
+from src.freep_pipeline.models.job import ParsedJob, RawJobLink
+from src.freep_pipeline.parsing.job_parser import JobParser
+from src.freep_pipeline.storage.repository import JobRepository
+from src.freep_pipeline.validation.validator import JobValidator
 
 logger = get_logger(__name__)
 
@@ -40,13 +40,13 @@ class ScanPipeline:
         self._validator = validator or JobValidator()
         self._repository = repository or JobRepository()
 
-    async def run(self) -> str:
+    def run(self) -> str:
         """Run one full scan: discover links, fetch+parse each job, validate,
         store. Returns the scan_id."""
         scan_id = self._generate_scan_id()
         logger.info("Starting scan %s", scan_id)
 
-        links = await self._discovery.discover_job_links()
+        links = self._discovery.discover_job_links()
         parsed_jobs = self._fetch_and_parse_all(links)
 
         results = self._validator.validate_batch(parsed_jobs)
@@ -68,7 +68,7 @@ class ScanPipeline:
         )
         return scan_id
 
-    def _fetch_and_parse_all(self, links: list) -> list[ParsedJob]:
+    def _fetch_and_parse_all(self, links: list[RawJobLink]) -> list[ParsedJob]:
         parsed_jobs: list[ParsedJob] = []
 
         for index, link in enumerate(links, start=1):
@@ -93,3 +93,9 @@ class ScanPipeline:
     def _generate_scan_id() -> str:
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
         return f"scan_{timestamp}_{uuid.uuid4().hex[:6]}"
+
+
+if __name__ == "__main__":
+    pipeline = ScanPipeline()
+    scan_id = pipeline.run()
+    print(f"Scan complete: {scan_id}")

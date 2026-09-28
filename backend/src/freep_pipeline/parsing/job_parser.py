@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup, Tag
 
 from config.logging_config import get_logger
 from config.settings import KNOWN_PROVINCES
-from freep_pipeline.models.job import ParsedJob
+from src.freep_pipeline.models.job import ParsedJob
 
 logger = get_logger(__name__)
 

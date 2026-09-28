@@ -11,9 +11,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from config.logging_config import get_logger
 from config.settings import DATABASE_URL
-from freep_pipeline.models.job import ParsedJob
-from freep_pipeline.storage.models import Base, JobCurrent, JobObservation
-from freep_pipeline.tracking.change_tracker import ChangeTracker
+from src.freep_pipeline.models.job import ParsedJob
+from src.freep_pipeline.storage.models import Base, JobCurrent, JobObservation
+from src.freep_pipeline.tracking.change_tracker import ChangeTracker
 
 logger = get_logger(__name__)
 
