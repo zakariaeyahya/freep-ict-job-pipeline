@@ -30,14 +30,17 @@ export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<JobStatus | "all">("all");
   const [changeType, setChangeType] = useState<ChangeType | "all">("all");
+  const [changedSince, setChangedSince] = useState("");
   const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const changedSinceMs = changedSince ? new Date(changedSince).getTime() : null;
 
     return jobs.filter((job) => {
       if (status !== "all" && job.publication.status !== status) return false;
       if (changeType !== "all" && job.change_type !== changeType) return false;
+      if (changedSinceMs !== null && new Date(job.version.last_seen_at).getTime() < changedSinceMs) return false;
 
       if (!query) return true;
 
@@ -52,7 +55,7 @@ export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
 
       return haystack.includes(query);
     });
-  }, [jobs, search, status, changeType]);
+  }, [jobs, search, status, changeType, changedSince]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
@@ -116,6 +119,31 @@ export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="job-changed-since" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Changed since
+          </label>
+          <div className="flex items-center gap-1.5">
+            <input
+              id="job-changed-since"
+              type="date"
+              value={changedSince}
+              onChange={(event) => updateFilter(setChangedSince)(event.target.value)}
+              className="rounded-2xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none focus-visible:border-violet-500 focus-visible:ring-2 focus-visible:ring-violet-500/30 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+            {changedSince ? (
+              <button
+                type="button"
+                onClick={() => updateFilter(setChangedSince)("")}
+                aria-label="Clear changed since filter"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-zinc-500 outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-violet-500/30 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
