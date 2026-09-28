@@ -44,8 +44,6 @@ class FreepDiscovery:
             config = CrawlerRunConfig(
                 js_code=self._select_ict_filter_and_scroll_js(),
                 wait_for="body",
-                wait_for_timeout=BROWSER_WAIT_FOR_TIMEOUT_MS,
-                capture_console_messages=True,
             )
 
             result = await crawler.arun(url=FREEP_START_URL, config=config)
@@ -53,9 +51,6 @@ class FreepDiscovery:
             if not result.success:
                 logger.error("Discovery crawl failed: %s", result.error_message)
                 raise RuntimeError(f"Freep discovery crawl failed: {result.error_message}")
-
-            for message in result.console_messages or []:
-                logger.debug("browser console: %s", message)
 
             links = self._extract_job_links(result.html)
             logger.info("Discovery finished: %d unique ICT job links found", len(links))
