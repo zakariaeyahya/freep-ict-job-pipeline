@@ -39,7 +39,9 @@ ADMIN_DB_URL = DATABASE_URL  # used only to issue CREATE/DROP DATABASE
 
 def _postgres_reachable() -> bool:
     try:
-        create_engine(ADMIN_DB_URL).connect().close()
+        engine = create_engine(ADMIN_DB_URL)
+        engine.connect().close()
+        engine.dispose()
         return True
     except Exception:
         return False
@@ -51,6 +53,21 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _force_drop_database(admin_engine, db_name: str) -> None:
+    with admin_engine.connect() as conn:
+        # Terminate any other connections first — a DROP DATABASE fails
+        # with ObjectInUse otherwise, e.g. a leftover connection from a
+        # previous test run or this same engine's own pool.
+        conn.execute(
+            text(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                "WHERE datname = :db_name AND pid <> pg_backend_pid()"
+            ),
+            {"db_name": db_name},
+        )
+        conn.execute(text(f'DROP DATABASE IF EXISTS "{db_name}"'))
+
+
 @pytest.fixture()
 def scratch_database():
     """Creates a throwaway Postgres database on the same server, and drops
@@ -58,15 +75,15 @@ def scratch_database():
     admin_engine = create_engine(ADMIN_DB_URL, isolation_level="AUTOCOMMIT")
     scratch_db_name = SCRATCH_DB_URL.rsplit("/", 1)[-1]
 
+    _force_drop_database(admin_engine, scratch_db_name)
     with admin_engine.connect() as conn:
-        conn.execute(text(f'DROP DATABASE IF EXISTS "{scratch_db_name}"'))
         conn.execute(text(f'CREATE DATABASE "{scratch_db_name}"'))
 
     try:
         yield SCRATCH_DB_URL
     finally:
-        with admin_engine.connect() as conn:
-            conn.execute(text(f'DROP DATABASE IF EXISTS "{scratch_db_name}"'))
+        _force_drop_database(admin_engine, scratch_db_name)
+        admin_engine.dispose()
 
 
 def _alembic_config(database_url: str) -> Config:
@@ -85,7 +102,10 @@ def test_upgrade_head_creates_every_table_on_a_fresh_database(scratch_database: 
     command.upgrade(_alembic_config(scratch_database), "head")
 
     engine = create_engine(scratch_database)
-    actual_tables = set(inspect(engine).get_table_names())
+    try:
+        actual_tables = set(inspect(engine).get_table_names())
+    finally:
+        engine.dispose()
     expected_tables = set(Base.metadata.tables.keys()) | {"alembic_version"}
 
     assert expected_tables <= actual_tables, f"missing tables: {expected_tables - actual_tables}"
@@ -101,7 +121,10 @@ def test_upgrade_then_downgrade_leaves_no_pipeline_tables(scratch_database: str)
     command.downgrade(config, "base")
 
     engine = create_engine(scratch_database)
-    remaining_tables = set(inspect(engine).get_table_names()) - {"alembic_version"}
+    try:
+        remaining_tables = set(inspect(engine).get_table_names()) - {"alembic_version"}
+    finally:
+        engine.dispose()
 
     assert remaining_tables == set(), f"downgrade left tables behind: {remaining_tables}"
 
@@ -116,9 +139,12 @@ def test_current_migration_matches_the_sqlalchemy_models(scratch_database: str) 
     command.upgrade(_alembic_config(scratch_database), "head")
 
     engine = create_engine(scratch_database)
-    with engine.connect() as connection:
-        context = MigrationContext.configure(connection)
-        diff = compare_metadata(context, Base.metadata)
+    try:
+        with engine.connect() as connection:
+            context = MigrationContext.configure(connection)
+            diff = compare_metadata(context, Base.metadata)
+    finally:
+        engine.dispose()
 
     assert diff == [], f"migrations are out of sync with the models: {diff}"
 

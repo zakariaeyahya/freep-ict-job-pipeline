@@ -23,8 +23,12 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Single source of truth for the DB URL: config/settings.py (env var
-# DATABASE_URL), never hardcoded in alembic.ini.
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+# DATABASE_URL), never hardcoded in alembic.ini. Only applied as a
+# fallback — if the Config object already has a URL (e.g. a test running
+# migrations against a scratch database via command.upgrade(config, ...)),
+# that explicit choice is respected instead of being silently overridden.
+if not config.get_main_option("sqlalchemy.url"):
+    config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 # scan_models' tables share storage.models.Base's registry (same
 # declarative Base), so importing them above registers ScanRun/ScanRoute/
