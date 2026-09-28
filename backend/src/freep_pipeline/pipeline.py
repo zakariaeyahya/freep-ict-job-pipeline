@@ -1,4 +1,5 @@
-"""Orchestrates one full scan run: discover, fetch, parse, validate, store.
+"""Orchestrates one full scan run: discover, fetch, parse, validate, store,
+and record a scan report (AC01, AC10, AC11).
 
 Migrated from the notebook's orchestration cell (cell 27: loop over all
 discovered URLs, fetch + parse each one).
@@ -12,15 +13,19 @@ import uuid
 from datetime import datetime, timezone
 
 from config.logging_config import get_logger
-from config.settings import HTTP_REQUEST_DELAY_SECONDS
+from config.settings import FREEP_START_URL, HTTP_REQUEST_DELAY_SECONDS
 from src.freep_pipeline.discovery.freep_discovery import FreepDiscovery
 from src.freep_pipeline.fetching.http_client import FreepHttpClient
 from src.freep_pipeline.models.job import ParsedJob, RawJobLink
+from src.freep_pipeline.models.scan import RouteVisit, ScanReport
 from src.freep_pipeline.parsing.job_parser import JobParser
 from src.freep_pipeline.storage.repository import JobRepository
 from src.freep_pipeline.validation.validator import JobValidator
 
 logger = get_logger(__name__)
+
+DEDUP_RULE = "unique by Freep job slug"
+DISCOVERY_CONFIG = "freep-ict-nuxt-data-v1"
 
 
 class ScanPipeline:
@@ -42,33 +47,70 @@ class ScanPipeline:
 
     def run(self) -> str:
         """Run one full scan: discover links, fetch+parse each job, validate,
-        store. Returns the scan_id."""
-        scan_id = self._generate_scan_id()
-        logger.info("Starting scan %s", scan_id)
+        store, and persist a scan report. Returns the scan_id."""
+        report = ScanReport(
+            scan_id=self._generate_scan_id(),
+            started_at=datetime.now(timezone.utc),
+            config=DISCOVERY_CONFIG,
+            dedup_rule=DEDUP_RULE,
+        )
+        logger.info("Starting scan %s", report.scan_id)
 
-        links = self._discovery.discover_job_links()
-        parsed_jobs = self._fetch_and_parse_all(links)
+        self._repository.create_schema()
+
+        links = self._discover(report)
+        parsed_jobs = self._fetch_and_parse_all(links, report)
 
         results = self._validator.validate_batch(parsed_jobs)
         valid_jobs = [r.job for r in results if r.is_valid]
+        for r in results:
+            if not r.is_valid:
+                report.add_error(r.job.source_job_id, "; ".join(r.errors))
 
-        self._repository.create_schema()
+        report.counts.discovered = len(links)
+        report.counts.processed = len(parsed_jobs)
+
         for job in valid_jobs:
             content_hash = self._compute_content_hash(job)
-            self._repository.save_observation(job, scan_id=scan_id, content_hash=content_hash)
-            self._repository.upsert_current(job, content_hash=content_hash)
+            self._repository.save_observation(job, scan_id=report.scan_id, content_hash=content_hash)
+            change_type = self._repository.upsert_current(job, content_hash=content_hash)
+            self._count_change(report, change_type)
+
+        report.ended_at = datetime.now(timezone.utc)
+        report.scan_status = self._determine_scan_status(report, expected_route_count=1)
+        report.published = report.scan_status == "COMPLETE_WITHIN_SCAN_WINDOW"
+        if not report.published:
+            report.published_reason = f"scan_status was {report.scan_status}, not COMPLETE_WITHIN_SCAN_WINDOW"
+
+        self._repository.save_scan_run(report)
 
         logger.info(
-            "Scan %s finished: %d discovered, %d parsed, %d valid, %d stored",
-            scan_id,
-            len(links),
-            len(parsed_jobs),
+            "Scan %s finished: status=%s discovered=%d processed=%d valid=%d errors=%d",
+            report.scan_id,
+            report.scan_status,
+            report.counts.discovered,
+            report.counts.processed,
             len(valid_jobs),
-            len(valid_jobs),
+            report.counts.errors,
         )
-        return scan_id
+        return report.scan_id
 
-    def _fetch_and_parse_all(self, links: list[RawJobLink]) -> list[ParsedJob]:
+    def _discover(self, report: ScanReport) -> list[RawJobLink]:
+        """Fetch the one known source route (Freep's homepage __NUXT_DATA__
+        payload) and record its outcome, per AC01/AC02."""
+        try:
+            links = self._discovery.discover_job_links()
+            report.routes.append(RouteVisit(url=FREEP_START_URL, pages_visited=1, result="success"))
+            return links
+        except Exception as exc:
+            logger.exception("Discovery failed")
+            report.routes.append(
+                RouteVisit(url=FREEP_START_URL, pages_visited=0, result="failed", error=str(exc))
+            )
+            report.add_error(FREEP_START_URL, str(exc))
+            return []
+
+    def _fetch_and_parse_all(self, links: list[RawJobLink], report: ScanReport) -> list[ParsedJob]:
         parsed_jobs: list[ParsedJob] = []
 
         for index, link in enumerate(links, start=1):
@@ -77,12 +119,38 @@ class ScanPipeline:
                 soup = self._http_client.get_detail_soup(link.source_url)
                 job = self._parser.parse(soup, link.source_url)
                 parsed_jobs.append(job)
-            except Exception:
+            except Exception as exc:
                 logger.exception("Failed to fetch/parse %s", link.source_url)
+                report.add_error(link.source_job_path, str(exc))
 
             time.sleep(HTTP_REQUEST_DELAY_SECONDS)
 
         return parsed_jobs
+
+    @staticmethod
+    def _count_change(report: ScanReport, change_type: str) -> None:
+        if change_type == "new":
+            report.counts.new += 1
+        elif change_type == "changed":
+            report.counts.changed += 1
+        # "unchanged" is not tracked as a separate counter in ScanCounts —
+        # only transitions that matter operationally are counted.
+
+    @staticmethod
+    def _determine_scan_status(report: ScanReport, expected_route_count: int) -> str:
+        """AC11: complete only if every known route succeeded and processing
+        covered every discovered job without unexplained gaps."""
+        all_routes_succeeded = (
+            len(report.routes) == expected_route_count
+            and all(route.result == "success" for route in report.routes)
+        )
+        all_discovered_processed = report.counts.processed >= report.counts.discovered
+
+        if not report.routes or all(route.result == "failed" for route in report.routes):
+            return "FAILED"
+        if all_routes_succeeded and all_discovered_processed and report.counts.errors == 0:
+            return "COMPLETE_WITHIN_SCAN_WINDOW"
+        return "INCOMPLETE"
 
     @staticmethod
     def _compute_content_hash(job: ParsedJob) -> str:

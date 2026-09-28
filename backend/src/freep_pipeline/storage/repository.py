@@ -12,7 +12,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from config.logging_config import get_logger
 from config.settings import DATABASE_URL
 from src.freep_pipeline.models.job import ParsedJob
+from src.freep_pipeline.models.scan import ScanReport
 from src.freep_pipeline.storage.models import Base, JobCurrent, JobObservation
+from src.freep_pipeline.storage.scan_models import ScanError, ScanRoute
+from src.freep_pipeline.storage.scan_models import ScanRun as ScanRunModel
 from src.freep_pipeline.tracking.change_tracker import ChangeTracker
 
 logger = get_logger(__name__)
@@ -56,9 +59,10 @@ class JobRepository:
             session.add(observation)
             session.commit()
 
-    def upsert_current(self, job: ParsedJob, content_hash: str) -> None:
+    def upsert_current(self, job: ParsedJob, content_hash: str) -> str:
         """Update the jobs_current projection from a new observation,
-        deriving change_type by comparing against the previous state."""
+        deriving change_type by comparing against the previous state.
+        Returns the derived change_type."""
         with self._session_factory() as session:
             existing = session.get(JobCurrent, job.source_job_id)
             now = datetime.now(timezone.utc)
@@ -111,3 +115,51 @@ class JobRepository:
 
             session.commit()
             logger.info("Upserted jobs_current for %s (%s)", job.source_job_id, change_type)
+            return change_type
+
+    def save_scan_run(self, report: ScanReport) -> None:
+        """Persist a finished scan run: window, routes, counts, errors and
+        final status (AC01, AC10)."""
+        with self._session_factory() as session:
+            scan_run = ScanRunModel(
+                scan_id=report.scan_id,
+                started_at=report.started_at,
+                ended_at=report.ended_at,
+                config=report.config,
+                dedup_rule=report.dedup_rule,
+                scan_status=report.scan_status,
+                published=report.published,
+                published_reason=report.published_reason,
+                count_discovered=report.counts.discovered,
+                count_processed=report.counts.processed,
+                count_duplicates=report.counts.duplicates,
+                count_new=report.counts.new,
+                count_changed=report.counts.changed,
+                count_closed=report.counts.closed,
+                count_temporarily_not_found=report.counts.temporarily_not_found,
+                count_errors=report.counts.errors,
+            )
+
+            scan_run.routes = [
+                ScanRoute(
+                    url=route.url,
+                    pages_visited=route.pages_visited,
+                    result=route.result,
+                    error=route.error,
+                )
+                for route in report.routes
+            ]
+
+            scan_run.errors = [
+                ScanError(
+                    reference=error.reference,
+                    reason=error.reason,
+                    retry_count=error.retry_count,
+                    recovery_status=error.recovery_status,
+                )
+                for error in report.errors
+            ]
+
+            session.add(scan_run)
+            session.commit()
+            logger.info("Saved scan run %s (%s)", report.scan_id, report.scan_status)
