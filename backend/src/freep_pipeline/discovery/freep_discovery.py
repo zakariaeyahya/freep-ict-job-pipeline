@@ -22,8 +22,8 @@ from config.settings import (
     HTTP_USER_AGENT,
     ICT_FILTER_LABEL,
 )
-from freep_pipeline.discovery.nuxt_data_decoder import NuxtDataDecoder
-from freep_pipeline.models.job import RawJobLink
+from src.freep_pipeline.discovery.nuxt_data_decoder import NuxtDataDecoder
+from src.freep_pipeline.models.job import RawJobLink
 
 logger = get_logger(__name__)
 
