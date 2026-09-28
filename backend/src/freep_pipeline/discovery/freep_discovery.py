@@ -101,3 +101,12 @@ class FreepDiscovery:
     @staticmethod
     def _job_url(slug: str) -> str:
         return f"https://www.freep.nl/opdracht/{slug}"
+
+
+if __name__ == "__main__":
+    discovery = FreepDiscovery()
+    links = discovery.discover_job_links()
+
+    print(f"{len(links)} ICT job links found:\n")
+    for link in links:
+        print(" -", link.source_url)
