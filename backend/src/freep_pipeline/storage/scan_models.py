@@ -17,7 +17,7 @@ from datetime import datetime
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from freep_pipeline.storage.models import Base
+from src.freep_pipeline.storage.models import Base
 
 
 class ScanRun(Base):
