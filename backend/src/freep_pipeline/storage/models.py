@@ -72,6 +72,12 @@ class JobCurrent(Base):
     status: Mapped[str] = mapped_column(String(32), default="open")
     change_type: Mapped[str] = mapped_column(String(32), default="new")
 
+    # Consecutive scans in which this job was NOT seen. A single miss
+    # never means deletion (brief §3.3) — it becomes temporarily_not_found
+    # and only turns into closed after CLOSURE_AFTER_CONSECUTIVE_ABSENCES
+    # consecutive misses (config.settings).
+    consecutive_absences: Mapped[int] = mapped_column(Integer, default=0)
+
     content_hash: Mapped[str] = mapped_column(String(64))
     record_version: Mapped[int] = mapped_column(Integer, default=1)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

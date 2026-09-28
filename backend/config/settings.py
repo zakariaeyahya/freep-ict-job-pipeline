@@ -43,6 +43,12 @@ HTTP_REQUEST_DELAY_SECONDS = 0.5
 BROWSER_HEADLESS = True
 BROWSER_PAGE_TIMEOUT_MS = 30_000
 
+# A job absent from CLOSURE_AFTER_CONSECUTIVE_ABSENCES consecutive scans
+# is marked closed. A single miss only ever becomes temporarily_not_found
+# (brief §3.3: "Do not automatically treat a single instance of not
+# finding an assignment as a deletion").
+CLOSURE_AFTER_CONSECUTIVE_ABSENCES = 2
+
 KNOWN_PROVINCES = [
     "Gelderland",
     "Zuid-Holland",

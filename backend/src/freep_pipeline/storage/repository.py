@@ -86,6 +86,8 @@ class JobRepository:
                 existing.wishes = job.wishes
                 existing.content_hash = content_hash
                 existing.change_type = change_type
+                existing.status = "open"
+                existing.consecutive_absences = 0
                 existing.record_version += 1
                 existing.last_seen_at = now
             else:
@@ -106,6 +108,7 @@ class JobRepository:
                         wishes=job.wishes,
                         status="open",
                         change_type="new",
+                        consecutive_absences=0,
                         content_hash=content_hash,
                         record_version=1,
                         first_seen_at=now,
@@ -116,6 +119,41 @@ class JobRepository:
             session.commit()
             logger.info("Upserted jobs_current for %s (%s)", job.source_job_id, change_type)
             return change_type
+
+    def mark_absent_jobs(self, seen_source_job_ids: set[str]) -> dict[str, int]:
+        """Mark every currently-open-or-unknown job NOT in
+        seen_source_job_ids as temporarily_not_found or closed, per
+        CLOSURE_AFTER_CONSECUTIVE_ABSENCES (AC09, brief §3.3). Never
+        touches jobs already closed. Returns counts by change_type."""
+        counts = {"temporarily_not_found": 0, "closed": 0}
+
+        with self._session_factory() as session:
+            candidates = (
+                session.query(JobCurrent)
+                .filter(JobCurrent.status != "closed")
+                .filter(JobCurrent.source_job_id.notin_(seen_source_job_ids))
+                .all()
+            )
+
+            for job in candidates:
+                status, change_type, absences = self._change_tracker.derive_absence_state(
+                    job.consecutive_absences
+                )
+                job.status = status
+                job.change_type = change_type
+                job.consecutive_absences = absences
+                job.record_version += 1
+                counts[change_type] += 1
+                logger.info(
+                    "Marked %s as %s (consecutive_absences=%d)",
+                    job.source_job_id,
+                    change_type,
+                    absences,
+                )
+
+            session.commit()
+
+        return counts
 
     def save_scan_run(self, report: ScanReport) -> None:
         """Persist a finished scan run: window, routes, counts, errors and

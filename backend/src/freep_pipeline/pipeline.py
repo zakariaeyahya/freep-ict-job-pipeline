@@ -60,6 +60,7 @@ class ScanPipeline:
 
         links = self._discover(report)
         parsed_jobs = self._fetch_and_parse_all(links, report)
+        discovery_route_succeeded = any(route.result != "failed" for route in report.routes)
 
         results = self._validator.validate_batch(parsed_jobs)
         valid_jobs = [r.job for r in results if r.is_valid]
@@ -75,6 +76,15 @@ class ScanPipeline:
             self._repository.save_observation(job, scan_id=report.scan_id, content_hash=content_hash)
             change_type = self._repository.upsert_current(job, content_hash=content_hash)
             self._count_change(report, change_type)
+
+        # Only mark jobs absent when discovery actually ran — a failed
+        # discovery route must never be mistaken for jobs having closed
+        # (brief §3.3: a source problem must not silently cause data loss).
+        if discovery_route_succeeded:
+            seen_ids = {job.source_job_id for job in valid_jobs}
+            absence_counts = self._repository.mark_absent_jobs(seen_ids)
+            report.counts.temporarily_not_found = absence_counts["temporarily_not_found"]
+            report.counts.closed = absence_counts["closed"]
 
         report.ended_at = datetime.now(timezone.utc)
         report.scan_status = self._determine_scan_status(report, expected_route_count=1)
