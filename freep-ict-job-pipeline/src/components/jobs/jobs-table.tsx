@@ -24,10 +24,13 @@ const CHANGE_OPTIONS: Array<{ value: ChangeType | "all"; label: string }> = [
   { value: "uncertain", label: "Uncertain" },
 ];
 
+const PAGE_SIZE = 8;
+
 export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<JobStatus | "all">("all");
   const [changeType, setChangeType] = useState<ChangeType | "all">("all");
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -51,6 +54,17 @@ export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
     });
   }, [jobs, search, status, changeType]);
 
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  function updateFilter<T>(setter: (value: T) => void) {
+    return (value: T) => {
+      setter(value);
+      setPage(1);
+    };
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -63,7 +77,7 @@ export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
             type="search"
             placeholder="Search by title, client or location…"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => updateFilter(setSearch)(event.target.value)}
             className="rounded-2xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus-visible:border-violet-500 focus-visible:ring-2 focus-visible:ring-violet-500/30 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           />
         </div>
@@ -75,7 +89,7 @@ export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
           <select
             id="job-status"
             value={status}
-            onChange={(event) => setStatus(event.target.value as JobStatus | "all")}
+            onChange={(event) => updateFilter(setStatus)(event.target.value as JobStatus | "all")}
             className="rounded-2xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none focus-visible:border-violet-500 focus-visible:ring-2 focus-visible:ring-violet-500/30 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           >
             {STATUS_OPTIONS.map((option) => (
@@ -93,7 +107,7 @@ export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
           <select
             id="job-change"
             value={changeType}
-            onChange={(event) => setChangeType(event.target.value as ChangeType | "all")}
+            onChange={(event) => updateFilter(setChangeType)(event.target.value as ChangeType | "all")}
             className="rounded-2xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none focus-visible:border-violet-500 focus-visible:ring-2 focus-visible:ring-violet-500/30 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           >
             {CHANGE_OPTIONS.map((option) => (
@@ -133,7 +147,7 @@ export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
-            {filtered.map((job) => (
+            {paginated.map((job) => (
               <tr key={job.identity.internal_job_id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/60">
                 <td className="px-4 py-3 text-sm">
                   <Link
@@ -173,9 +187,53 @@ export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
         </table>
       </div>
 
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">
-        Showing {filtered.length} of {jobs.length} jobs
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          Showing {paginated.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}
+          {"–"}
+          {(currentPage - 1) * PAGE_SIZE + paginated.length} of {filtered.length} jobs
+        </p>
+
+        {pageCount > 1 ? (
+          <nav aria-label="Jobs pagination" className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              aria-label="Previous page"
+              className="flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200 text-sm text-zinc-600 outline-none focus-visible:ring-2 focus-visible:ring-violet-500/30 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400"
+            >
+              ‹
+            </button>
+
+            {Array.from({ length: pageCount }, (_, i) => i + 1).map((pageNumber) => (
+              <button
+                key={pageNumber}
+                type="button"
+                onClick={() => setPage(pageNumber)}
+                aria-current={pageNumber === currentPage ? "page" : undefined}
+                className={
+                  pageNumber === currentPage
+                    ? "flex h-8 w-8 items-center justify-center rounded-xl bg-violet-600 text-sm font-medium text-white outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2"
+                    : "flex h-8 w-8 items-center justify-center rounded-xl text-sm text-zinc-600 outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-violet-500/30 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                }
+              >
+                {pageNumber}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              disabled={currentPage === pageCount}
+              aria-label="Next page"
+              className="flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200 text-sm text-zinc-600 outline-none focus-visible:ring-2 focus-visible:ring-violet-500/30 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400"
+            >
+              ›
+            </button>
+          </nav>
+        ) : null}
+      </div>
     </div>
   );
 }

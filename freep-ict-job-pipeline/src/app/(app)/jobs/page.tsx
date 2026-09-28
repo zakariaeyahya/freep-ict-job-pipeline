@@ -1,6 +1,7 @@
 import { getJobs } from "@/lib/mock/jobs";
 import { JobsSummary } from "@/components/jobs/jobs-summary";
 import { JobsTable } from "@/components/jobs/jobs-table";
+import { ScanStatusBanner } from "@/components/jobs/scan-status-banner";
 
 export default function JobsPage() {
   const jobs = getJobs();
@@ -15,6 +16,7 @@ export default function JobsPage() {
       </div>
 
       <JobsSummary jobs={jobs} />
+      <ScanStatusBanner />
       <JobsTable jobs={jobs} />
     </div>
   );

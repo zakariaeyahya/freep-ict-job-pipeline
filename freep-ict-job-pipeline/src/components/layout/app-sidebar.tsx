@@ -18,10 +18,12 @@ export function AppSidebar() {
       aria-label="Main navigation"
       className="flex w-56 shrink-0 flex-col gap-6 border-r border-zinc-200 bg-white px-4 py-6 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <Link href="/jobs" className="flex items-center gap-2 px-2">
-        <Image src="/donker-logo.svg" alt="" width={28} height={28} aria-hidden="true" />
-        <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-          Freep ICT Job Pipeline
+      <Link href="/jobs" className="flex items-center gap-2.5 px-2">
+        <Image src="/donker-logo.svg" alt="" width={32} height={32} aria-hidden="true" />
+        <span className="text-sm leading-tight font-semibold text-zinc-900 dark:text-zinc-50">
+          Freep
+          <br />
+          ICT Job Pipeline
         </span>
       </Link>
 
