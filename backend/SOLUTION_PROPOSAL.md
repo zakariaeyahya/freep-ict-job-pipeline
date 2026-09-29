@@ -96,3 +96,115 @@ limitations", not yet built): a scheduler (cron-triggered, or a simple
 can't run against the same database at once. Both are additive on top of
 the current architecture — `ScanPipeline` itself does not need to change
 to add either.
+
+## Field extraction: LLM-assisted vs. static-only (chosen: LLM-assisted)
+
+A second, independent decision: how to derive the profile, engagement and
+procedure fields (`education`, `experience`, `skills`, `methods`,
+`certifications`, `languages`, `zzp_allowed`, `screening`, `vog`,
+`positions`, `max_candidates` — brief §4.2) that Freep exposes only as
+prose mixed into the free-text requirements/wishes, not as separate HTML
+elements (e.g. "Geen ZZP", "afgeronde HBO opleiding" are sentences, not
+structured fields anywhere in the page markup).
+
+### Option 1 — Static-only extraction (regex/keyword rules, no LLM)
+
+Every one of these fields would be derived with hand-written regex or
+keyword-matching rules against the requirements/wishes text (the same
+approach already used for `contract_type`'s HTML badge, extended to prose
+fields it does not currently cover).
+
+**Trade-offs:**
+
+- (+) Fully deterministic and free to run — no third-party API dependency,
+  no per-request cost, no rate limit, no outage risk from an external
+  provider.
+- (+) Trivially reproducible: the exact same input text always yields the
+  exact same output, with no model version drift to account for over time.
+- (+) No risk of a hallucinated value ever reaching a published record —
+  the class of failure this project's never-fabricate rule exists to
+  prevent (CLAUDE.md; `LlmFieldExtractor`'s anti-fabrication verification
+  pass) cannot occur if there is no generative step at all.
+- (-) **Loses information the LLM-assisted step currently recovers.**
+  Requirements are free Dutch prose with unbounded phrasing
+  ("Kandidaat heeft minimaal 3 jaar ervaring met programmeren in python",
+  "diepgaande kennis van huisvestingswetgeving", "in team verband aan het
+  project werken door gebruik te maken van de juiste tools en werkwijze")
+  — a fixed rule set only catches phrasings it was written to catch.
+  Every synonym, word order, or way of expressing the same requirement
+  that the rules did not anticipate is silently missed, not flagged as
+  uncertain: the field is simply left empty even though the information
+  is present in the source text.
+- (-) High and growing maintenance cost: each new client/agency posting on
+  Freep tends to phrase the same requirement differently, so the rule set
+  would need continual expansion as new phrasings are observed in
+  production, with no way to know how much is being missed without manual
+  sampling.
+- (-) Structured, multi-concept fields degrade the most. `skills`,
+  `methods` and `education` in particular are not single keywords but
+  concepts embedded in full sentences (see the "Ai developer" example in
+  the project report: "sterke kennis van prompt engineering, agents en
+  Retrieval-Augmented Generation" correctly yields three separate skills
+  today) — regex reliably extracts isolated keywords but struggles to
+  segment a sentence into the right number of distinct, correctly-bounded
+  items without either over-splitting or merging unrelated concepts.
+
+### Option 2 — LLM-assisted extraction with source-verification (chosen)
+
+An LLM (`LlmFieldExtractor`, OpenAI primary / Groq fallback per
+`FallbackLlmClient`) reads the same free text and proposes structured
+values, but every value it returns is verified to be an exact substring
+of the source text before being trusted — a paraphrase or invented value
+is discarded, never published (see the module's docstring for the
+anti-fabrication guarantee this rests on).
+
+**Trade-offs:**
+
+- (+) Recovers far more of the information actually present in the
+  source, because it generalizes across phrasing instead of matching
+  fixed patterns — the same reason it correctly segments multi-concept
+  sentences into distinct skills/requirements that a keyword rule would
+  either merge or miss entirely.
+- (+) The verification step keeps the static-only option's core safety
+  property: nothing reaches a published record unless it is a literal,
+  checkable excerpt of the source — the LLM is a *proposal* mechanism, not
+  a trusted source of truth by itself.
+- (+) `_enrich_with_llm_fields_unless_source_unchanged` (pipeline.py)
+  reuses the previous scan's extraction when a job's source text has not
+  changed, so the LLM is only called once per distinct piece of source
+  text, not on every scan.
+- (-) Depends on two external services (OpenAI, Groq) — cost per call,
+  rate limits, and an outage of both leaves that scan's new/changed jobs
+  with these fields empty until a later scan succeeds (best-effort, never
+  blocks the scan — see RUNBOOK.md "Known limitations").
+- (-) Not perfectly deterministic across model versions: the *verification
+  pass* is deterministic (a value is either a substring of the source or
+  it is not), but the *set* of values a given model proposes for the same
+  input can vary slightly between model versions or providers, so which
+  correct values are recovered (never which incorrect ones are published)
+  can shift slightly over time.
+- (-) Adds two provider integrations and their secrets (`OPENAI_API_KEY`,
+  `GROQ_API_KEY`) to operate, versus zero for the static-only option.
+
+### Recommendation for field extraction
+
+**Option 2 (LLM-assisted, with source-verification)**, which is what this
+repository already implements. The static-only option's core problem is
+not cost or complexity — it is that it **silently loses real information
+already present in the source**, which directly works against the brief's
+own completeness goals (§6.3 "Source coverage": critical fields with
+evidence references divided by available critical fields, target 100
+percent) far more than the LLM option's operational trade-offs (cost, two
+external dependencies) work against it. The anti-fabrication verification
+pass specifically closes the one risk a static-only approach would
+otherwise "win" on (never publishing an invented value), so Option 2 gets
+both properties — recovered information *and* no fabrication — rather
+than trading one for the other.
+
+Static-only extraction remains the correct fallback in one narrow case
+already handled today: `contract_type`, which Freep exposes as a real
+HTML badge rather than free text, is read directly by `JobParser` and
+always takes priority over the LLM's text-based guess when the badge is
+present (`pipeline.py`'s `_enrich_with_llm_fields`) — a structural signal
+is used when one exists, and the LLM is reserved for fields that only
+ever exist as prose.
