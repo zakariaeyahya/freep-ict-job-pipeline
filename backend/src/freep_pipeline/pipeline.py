@@ -23,6 +23,7 @@ from src.freep_pipeline.models.job import ParsedJob, RawJobLink
 from src.freep_pipeline.models.scan import RouteVisit, ScanReport
 from src.freep_pipeline.parsing.job_parser import JobParser
 from src.freep_pipeline.storage.repository import JobRepository
+from src.freep_pipeline.storage.scan_lock import scan_lock
 from src.freep_pipeline.validation.validator import JobValidator
 
 logger = get_logger(__name__)
@@ -56,7 +57,17 @@ class ScanPipeline:
 
     def run(self) -> str:
         """Run one full scan: discover links, fetch+parse each job, validate,
-        store, and persist a scan report. Returns the scan_id."""
+        store, and persist a scan report. Returns the scan_id.
+
+        Raises ScanAlreadyRunningError immediately (before doing any work)
+        if another scan already holds the lock on this database (brief
+        §9.2: "prevents conflicting runs") — two concurrent scans writing
+        to the same jobs_current projection is exactly the kind of
+        conflict AC10's recovery guarantees assume can't happen."""
+        with scan_lock(self._repository.engine):
+            return self._run_locked()
+
+    def _run_locked(self) -> str:
         report = ScanReport(
             scan_id=self._generate_scan_id(),
             started_at=datetime.now(timezone.utc),

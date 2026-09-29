@@ -18,6 +18,7 @@ from src.freep_pipeline.api.routes import auth, exports, health, jobs, scans
 from src.freep_pipeline.api.services.auth_service import InvalidCredentialsError
 from src.freep_pipeline.api.services.job_service import JobNotFoundError
 from src.freep_pipeline.api.services.scan_service import ScanNotFoundError
+from src.freep_pipeline.api.services.scan_trigger_service import ScanAlreadyRunningError
 
 app = FastAPI(title="Freep ICT Job Pipeline API", version="1.0")
 
@@ -69,6 +70,14 @@ def handle_scan_not_found(request: Request, exc: ScanNotFoundError) -> JSONRespo
     return JSONResponse(
         status_code=404,
         content=_error_body(request, 404, "scan_not_found", str(exc)),
+    )
+
+
+@app.exception_handler(ScanAlreadyRunningError)
+def handle_scan_already_running(request: Request, exc: ScanAlreadyRunningError) -> JSONResponse:
+    return JSONResponse(
+        status_code=409,
+        content=_error_body(request, 409, "scan_already_running", str(exc)),
     )
 
 

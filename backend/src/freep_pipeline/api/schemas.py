@@ -202,6 +202,10 @@ class ScanListResponse(BaseModel):
     offset: int
 
 
+class ScanTriggerResponse(BaseModel):
+    status: str
+
+
 class LoginRequest(BaseModel):
     email: str
     password: str

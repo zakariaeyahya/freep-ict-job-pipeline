@@ -7,6 +7,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from config.logging_config import get_logger
@@ -30,6 +31,13 @@ class JobRepository:
         self._session_factory: sessionmaker[Session] = sessionmaker(bind=self._engine)
         self._change_tracker = ChangeTracker()
         self._normalizer = JobNormalizer()
+
+    @property
+    def engine(self) -> Engine:
+        """Exposed so callers can take the scan advisory lock
+        (storage/scan_lock.py) on the same database this repository
+        writes to, without duplicating connection setup."""
+        return self._engine
 
     def create_schema(self) -> None:
         """Create tables if they do not exist yet — used for disposable

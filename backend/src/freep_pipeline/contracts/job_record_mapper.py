@@ -118,7 +118,7 @@ class JobRecordMapper:
             "screening": job.screening,
             "vog": job.vog,
             # No reliable per-offer signal found on Freep's pages for
-            # these two (see DISCOVERY_REPORT.md) — never fabricated.
+            # these two (see ../docs/DISCOVERY_REPORT.md) — never fabricated.
             "nationality_constraints": None,
             "supplier_conditions": None,
         }
@@ -129,7 +129,7 @@ class JobRecordMapper:
             "positions": job.positions,
             "max_candidates": job.max_candidates,
             # No reliable per-offer signal found on Freep's pages for
-            # these two (see DISCOVERY_REPORT.md) — never fabricated.
+            # these two (see ../docs/DISCOVERY_REPORT.md) — never fabricated.
             "interview_window": None,
             "submission_instructions": None,
         }
