@@ -19,6 +19,7 @@ from sqlalchemy import create_engine, text
 
 from config.logging_config import get_logger
 from config.settings import DATABASE_URL
+from src.freep_pipeline.api.services.scan_progress import ScanProgressTracker, get_scan_progress_tracker
 from src.freep_pipeline.pipeline import ScanPipeline
 from src.freep_pipeline.storage.scan_lock import SCAN_LOCK_KEY
 
@@ -32,6 +33,9 @@ class ScanAlreadyRunningError(Exception):
 
 
 class ScanTriggerService:
+    def __init__(self, progress_tracker: ScanProgressTracker | None = None) -> None:
+        self._progress_tracker = progress_tracker or get_scan_progress_tracker()
+
     def trigger_scan(self) -> None:
         """Best-effort, non-blocking check for a scan already in progress,
         so a caller clicking "run scan" gets immediate feedback instead of
@@ -62,10 +66,9 @@ class ScanTriggerService:
         finally:
             engine.dispose()
 
-    @staticmethod
-    def _run_scan_in_background() -> None:
+    def _run_scan_in_background(self) -> None:
         try:
-            scan_id = ScanPipeline().run()
+            scan_id = ScanPipeline(progress_reporter=self._progress_tracker).run()
             logger.info("Manually triggered scan finished: %s", scan_id)
         except Exception:
             # Never let a background-thread exception vanish silently —

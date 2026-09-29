@@ -206,6 +206,19 @@ class ScanTriggerResponse(BaseModel):
     status: str
 
 
+class ScanActivityEventResponse(BaseModel):
+    message: str
+    at: str
+
+
+class ScanProgressResponse(BaseModel):
+    phase: str
+    jobs_total: int | None
+    jobs_processed: int
+    activity: list[ScanActivityEventResponse]
+    started_at: str
+
+
 class LoginRequest(BaseModel):
     email: str
     password: str

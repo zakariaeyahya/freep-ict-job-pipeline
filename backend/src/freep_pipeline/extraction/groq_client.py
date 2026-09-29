@@ -40,7 +40,14 @@ class GroqClient:
     ) -> None:
         if not api_key:
             raise GroqUnavailableError("GROQ_API_KEY is not set")
-        self._client = Groq(api_key=api_key, timeout=timeout_seconds)
+        # max_retries=0: the SDK's default retry behavior waits out a
+        # 429's Retry-After (observed 7-20s per attempt against this
+        # account's rate limit) before ever raising — which defeats the
+        # whole point of FallbackLlmClient's fast fallback to Ollama.
+        # Failing immediately on the first 429 lets the caller fall back
+        # right away instead of stalling the scan for tens of seconds per
+        # job.
+        self._client = Groq(api_key=api_key, timeout=timeout_seconds, max_retries=0)
         self._model = model
 
     def generate_json(self, system_prompt: str, user_prompt: str) -> dict:

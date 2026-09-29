@@ -12,6 +12,7 @@ import json
 import time
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from config.logging_config import get_logger
 from config.settings import FREEP_START_URL, HTTP_REQUEST_DELAY_SECONDS
@@ -33,6 +34,31 @@ DEDUP_RULE = "unique by Freep job slug"
 DISCOVERY_CONFIG = "freep-ict-nuxt-data-v1"
 
 
+class NullProgressReporter:
+    """Default no-op progress reporter — ScanPipeline never needs to know
+    whether anything is actually listening. The real listener
+    (api/services/scan_progress.py's ScanProgressTracker) lives in the API
+    layer and is injected only when a scan is started through the API's
+    "run scan now" trigger; the CLI (scripts/scrape.py) and every test use
+    this no-op instead, keeping the pipeline itself free of any API-layer
+    import."""
+
+    def start(self) -> None:
+        pass
+
+    def report_discovery_finished(self, jobs_total: int) -> None:
+        pass
+
+    def report_job_processed(self, index: int, total: int, title: str | None) -> None:
+        pass
+
+    def report_storing(self) -> None:
+        pass
+
+    def finish(self) -> None:
+        pass
+
+
 class ScanPipeline:
     """Runs one discovery-to-storage pass over Freep's ICT jobs."""
 
@@ -46,6 +72,11 @@ class ScanPipeline:
         schema_validator: SchemaValidator | None = None,
         record_mapper: JobRecordMapper | None = None,
         field_extractor: LlmFieldExtractor | None = None,
+        # Any, not NullProgressReporter: ScanProgressTracker (api layer) is
+        # passed here too and only shares this class's method signatures
+        # by duck typing, not inheritance — keeps ScanPipeline free of any
+        # api-layer import.
+        progress_reporter: Any | None = None,
     ) -> None:
         self._discovery = discovery or FreepDiscovery()
         self._http_client = http_client or FreepHttpClient()
@@ -55,6 +86,7 @@ class ScanPipeline:
         self._schema_validator = schema_validator or job_record_validator()
         self._record_mapper = record_mapper or JobRecordMapper()
         self._field_extractor = field_extractor or LlmFieldExtractor()
+        self._progress = progress_reporter or NullProgressReporter()
 
     def run(self) -> str:
         """Run one full scan: discover links, fetch+parse each job, validate,
@@ -69,6 +101,13 @@ class ScanPipeline:
             return self._run_locked()
 
     def _run_locked(self) -> str:
+        self._progress.start()
+        try:
+            return self._run_locked_and_tracked()
+        finally:
+            self._progress.finish()
+
+    def _run_locked_and_tracked(self) -> str:
         report = ScanReport(
             scan_id=self._generate_scan_id(),
             started_at=datetime.now(timezone.utc),
@@ -80,6 +119,7 @@ class ScanPipeline:
         self._repository.create_schema()
 
         links = self._discover(report)
+        self._progress.report_discovery_finished(len(links))
         parsed_jobs = self._fetch_and_parse_all(links, report)
         discovery_route_succeeded = any(route.result != "failed" for route in report.routes)
 
@@ -91,6 +131,8 @@ class ScanPipeline:
 
         report.counts.discovered = len(links)
         report.counts.processed = len(parsed_jobs)
+
+        self._progress.report_storing()
 
         schema_violation_count = 0
         for job in valid_jobs:
@@ -185,18 +227,22 @@ class ScanPipeline:
 
     def _fetch_and_parse_all(self, links: list[RawJobLink], report: ScanReport) -> list[ParsedJob]:
         parsed_jobs: list[ParsedJob] = []
+        total = len(links)
 
         for index, link in enumerate(links, start=1):
-            logger.info("[%d/%d] fetching %s", index, len(links), link.source_url)
+            logger.info("[%d/%d] fetching %s", index, total, link.source_url)
+            title: str | None = None
             try:
                 soup = self._http_client.get_detail_soup(link.source_url)
                 job = self._parser.parse(soup, link.source_url)
+                title = job.title
                 self._enrich_with_llm_fields_unless_source_unchanged(job)
                 parsed_jobs.append(job)
             except Exception as exc:
                 logger.exception("Failed to fetch/parse %s", link.source_url)
                 report.add_error(link.source_job_path, str(exc))
 
+            self._progress.report_job_processed(index, total, title)
             time.sleep(HTTP_REQUEST_DELAY_SECONDS)
 
         return parsed_jobs
