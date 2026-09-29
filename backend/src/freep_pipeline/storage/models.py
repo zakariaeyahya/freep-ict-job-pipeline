@@ -115,6 +115,16 @@ class JobCurrent(Base):
     hours_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
     hours_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # Hash of only the HTML-parsed fields (title/company/rate/description/
+    # hard_requirements/wishes/contract_type — never the LLM-derived
+    # fields), computed before LlmFieldExtractor runs. Lets the pipeline
+    # detect "this job's source content is identical to last scan" and
+    # skip the LLM call entirely, reusing the previous observation's
+    # education/skills/etc. instead of re-extracting them for nothing.
+    # Distinct from content_hash below, which includes the LLM output and
+    # drives AC09's new/changed/unchanged classification.
+    source_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
     status: Mapped[str] = mapped_column(String(32), default="open")
     change_type: Mapped[str] = mapped_column(String(32), default="new")
 

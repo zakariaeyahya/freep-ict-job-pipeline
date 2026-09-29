@@ -115,7 +115,9 @@ class JobRepository:
             session.add(observation)
             session.commit()
 
-    def upsert_current(self, job: ParsedJob, content_hash: str) -> tuple[str, JobCurrent]:
+    def upsert_current(
+        self, job: ParsedJob, content_hash: str, source_hash: str | None = None
+    ) -> tuple[str, JobCurrent]:
         """Update the jobs_current projection from a new observation,
         deriving change_type by comparing against the previous state.
         Returns (change_type, the resulting JobCurrent row, detached from
@@ -161,6 +163,7 @@ class JobRepository:
                 existing.hours_min = hours_min
                 existing.hours_max = hours_max
                 existing.content_hash = content_hash
+                existing.source_hash = source_hash
                 existing.change_type = change_type
                 existing.status = "open"
                 existing.consecutive_absences = 0
@@ -202,6 +205,7 @@ class JobRepository:
                     change_type="new",
                     consecutive_absences=0,
                     content_hash=content_hash,
+                    source_hash=source_hash,
                     record_version=1,
                     first_seen_at=now,
                     last_seen_at=now,

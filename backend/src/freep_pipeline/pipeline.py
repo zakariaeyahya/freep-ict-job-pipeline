@@ -8,6 +8,7 @@ discovered URLs, fetch + parse each one).
 from __future__ import annotations
 
 import hashlib
+import json
 import time
 import uuid
 from datetime import datetime, timezone
@@ -94,8 +95,11 @@ class ScanPipeline:
         schema_violation_count = 0
         for job in valid_jobs:
             content_hash = self._compute_content_hash(job)
+            source_hash = self._compute_source_hash(job)
             self._repository.save_observation(job, scan_id=report.scan_id, content_hash=content_hash)
-            change_type, current = self._repository.upsert_current(job, content_hash=content_hash)
+            change_type, current = self._repository.upsert_current(
+                job, content_hash=content_hash, source_hash=source_hash
+            )
             self._count_change(report, change_type)
 
             schema_result = self._schema_validator.validate(self._record_mapper.to_job_record(current))
@@ -187,7 +191,7 @@ class ScanPipeline:
             try:
                 soup = self._http_client.get_detail_soup(link.source_url)
                 job = self._parser.parse(soup, link.source_url)
-                self._enrich_with_llm_fields(job)
+                self._enrich_with_llm_fields_unless_source_unchanged(job)
                 parsed_jobs.append(job)
             except Exception as exc:
                 logger.exception("Failed to fetch/parse %s", link.source_url)
@@ -196,6 +200,34 @@ class ScanPipeline:
             time.sleep(HTTP_REQUEST_DELAY_SECONDS)
 
         return parsed_jobs
+
+    def _enrich_with_llm_fields_unless_source_unchanged(self, job: ParsedJob) -> None:
+        """Skips the LLM call entirely when this job's HTML-parsed content
+        is byte-for-byte identical to the last scan's — re-running
+        extraction on unchanged text would always produce the same
+        grounded result anyway (temperature=0), so it's pure wasted time
+        (Groq latency, or Ollama's ~100s cold start). Reuses the previous
+        observation's LLM-derived fields instead of leaving them empty."""
+        source_hash = self._compute_source_hash(job)
+        existing = self._repository.get_current_job(job.source_job_id)
+
+        if existing is not None and existing.source_hash == source_hash:
+            logger.info("Source unchanged for %s, reusing previous LLM extraction", job.source_job_id)
+            job.education = existing.education
+            job.experience = existing.experience
+            job.skills = existing.skills
+            job.methods = existing.methods
+            job.certifications = existing.certifications
+            job.languages = existing.languages
+            job.contract_type = job.contract_type or existing.contract_type
+            job.zzp_allowed = existing.zzp_allowed
+            job.screening = existing.screening
+            job.vog = existing.vog
+            job.positions = existing.positions
+            job.max_candidates = existing.max_candidates
+            return
+
+        self._enrich_with_llm_fields(job)
 
     def _enrich_with_llm_fields(self, job: ParsedJob) -> None:
         """Best-effort: never blocks or fails the scan if the LLM is down
@@ -249,6 +281,33 @@ class ScanPipeline:
     @staticmethod
     def _compute_content_hash(job: ParsedJob) -> str:
         payload = job.model_dump_json()
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _compute_source_hash(job: ParsedJob) -> str:
+        """Hashes only the fields JobParser extracts directly from HTML —
+        never the LLM-derived fields (education/skills/etc.), which don't
+        exist yet at the point this is called (before
+        _enrich_with_llm_fields_unless_source_unchanged runs). This is
+        what "has this job's source content changed since last scan?"
+        means for the LLM-skip decision — distinct from content_hash,
+        which hashes the full ParsedJob (including LLM output) for AC09's
+        change_type classification."""
+        source_fields = {
+            "title": job.title,
+            "company": job.company,
+            "rate": job.rate,
+            "province": job.province,
+            "segment": job.segment,
+            "hours_per_week": job.hours_per_week,
+            "start_date": job.start_date,
+            "end_date": job.end_date,
+            "description_original": job.description_original,
+            "hard_requirements": job.hard_requirements,
+            "wishes": job.wishes,
+            "contract_type": job.contract_type,
+        }
+        payload = json.dumps(source_fields, sort_keys=True, ensure_ascii=False)
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     @staticmethod
