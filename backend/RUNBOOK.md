@@ -11,48 +11,39 @@ architectural alternatives considered, see
 
 ## 1. Installation
 
-Prerequisites: Python 3.11, Docker (for PostgreSQL/Keycloak/Ollama), a
-Freep-reachable network connection.
+Prerequisites: Docker + the Docker Compose plugin, a Freep-reachable
+network connection. Running the full stack (PostgreSQL, Keycloak,
+backend, frontend) via `docker compose` from the repo root is the
+supported path — see [`../HOSTINGER_DEPLOY.md`](../HOSTINGER_DEPLOY.md)
+and the root `.env.example`.
 
 ```bash
-cd backend
-python -m venv .venv
-.venv/Scripts/pip install -r requirements.txt   # Windows
-# .venv/bin/pip install -r requirements.txt      # macOS/Linux
-cp .env.example .env
+cd /path/to/repo/root
+cp .env.example .env   # fill in secrets — see §2
+docker compose up -d --build
 ```
 
-Start dependent services:
-
-```bash
-docker run -d --name freep-postgres -p 5432:5432 \
-  -e POSTGRES_USER=freep -e POSTGRES_PASSWORD=freep -e POSTGRES_DB=freep_pipeline \
-  postgres:17-alpine
-
-docker run -d --name freep-keycloak -p 8080:8080 \
-  -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin \
-  quay.io/keycloak/keycloak:25.0 start-dev
-
-docker run -d --name freep-ollama -p 11434:11434 -v ollama_data:/root/.ollama ollama/ollama:latest
-docker exec freep-ollama ollama pull qwen2.5:7b-instruct
-```
+No manual Keycloak setup is needed: the `dreev` realm and its three
+clients (`freep-pipeline-api`, `freep-reviewer-ui`, `freep-test-client`,
+audience mapper already attached) import automatically on first Keycloak
+startup from
+[`../docker/keycloak/dreev-realm.json`](../docker/keycloak/dreev-realm.json).
+Right after, the `keycloak-init` service runs once and pushes the client
+secrets and the reviewer user/password from `.env` into that realm — see
+[`../docker/keycloak/init-secrets.sh`](../docker/keycloak/init-secrets.sh).
+Both steps are idempotent, so a restart or redeploy never repeats the
+setup or requires the admin console.
 
 Apply the database schema (never hand-edit the schema — see §5):
 
 ```bash
-.venv/Scripts/python.exe -m alembic upgrade head
+docker compose exec backend alembic upgrade head
 ```
-
-Complete the Keycloak realm/client/user setup in
-[`README.md`](README.md) ("Auth (Keycloak)") — this is the part most
-likely to trip up a fresh install (see the two documented pitfalls there:
-missing First/Last name on a user, and a client missing its audience
-mapper).
 
 Verify the install:
 
 ```bash
-.venv/Scripts/python.exe -m pytest
+docker compose exec backend pytest
 ```
 
 ## 2. Configuration
@@ -66,9 +57,9 @@ ones. Key groups:
 | Group | Variables | Notes |
 | --- | --- | --- |
 | Database | `DATABASE_URL` | PostgreSQL only in production; SQLite is test-only (see `tests/test_scan_recovery.py`) |
-| Keycloak | `KEYCLOAK_ISSUER_URL`, `KEYCLOAK_API_AUDIENCE`, `KEYCLOAK_REVIEWER_CLIENT_ID`/`_SECRET` | See README "Auth (Keycloak)" for full setup |
+| Keycloak | `KEYCLOAK_REVIEWER_CLIENT_SECRET`, `FREEP_TEST_CLIENT_SECRET`, `REVIEWER_USERNAME`/`_PASSWORD`/`_EMAIL` | Realm/clients auto-import — see §1; these are only the secrets pushed in by `keycloak-init` |
 | CORS | `CORS_ALLOWED_ORIGINS` | Comma-separated, never `*` |
-| LLM extraction | `GROQ_API_KEY`/`GROQ_MODEL`, `OLLAMA_BASE_URL`/`OLLAMA_MODEL` | Best-effort; a scan proceeds even if both are unreachable (see §3) |
+| LLM extraction | `OPENAI_API_KEY`/`OPENAI_MODEL`, `GROQ_API_KEY`/`GROQ_MODEL` | OpenAI primary, Groq fallback. Best-effort; a scan proceeds even if both are unreachable (see §3) |
 
 Config changes take effect on process restart only — `.env` is loaded
 once at import time (`load_dotenv()`), not watched for changes.
@@ -103,7 +94,7 @@ unstick after a crash.
   sanity-check route coverage without a full scan.
 - `scripts/validate.py <job_url>` fetches and validates a single job page
   without storing anything — useful to debug one URL.
-- `scripts/test_llm_extraction.py [--provider fallback|groq|ollama]` is a
+- `scripts/test_llm_extraction.py [--provider fallback|groq|openai]` is a
   one-job manual sanity check for the LLM extraction step — never run it
   against the full dataset (time/API quota cost).
 
@@ -162,12 +153,15 @@ generated migration before applying it (check for missing
 `server_default` on new `NOT NULL` columns against a non-empty table, see
 `migrations/versions/035daf1517e0_*.py` for a worked example).
 
-**Keycloak/auth issues:** see README "Auth (Keycloak)" for the two
-non-obvious failure modes already hit during setup (incomplete user
-profile, missing audience mapper) before assuming the API code is at
-fault — both produce an opaque `invalid_grant`/401 with no further detail
-by design (never leak whether an email exists vs. the password was
-wrong).
+**Keycloak/auth issues:** the realm/clients/reviewer user are provisioned
+automatically (see §1) — check `docker compose logs keycloak-init` first;
+it fails loudly (missing required `.env` variable) rather than silently
+leaving a client without a secret. A `401`/`invalid_client_credentials`
+after a `.env` secret change almost always means a service still holds
+the old value in memory — `docker compose up -d --force-recreate backend
+keycloak-init` to pick up the new one. A `401`/`invalid_grant` with no
+further detail is Keycloak's intentional opaque response (never leaks
+whether the email exists vs. the password was wrong).
 
 ## 6. Source changes
 
@@ -209,10 +203,11 @@ changes its markup:
 - **`AGREED_SCAN_FREQUENCY_HOURS` (24h) is a placeholder**, not yet
   formalized by Dreev (brief §9.1 "known limitations... operational
   choices").
-- **LLM-assisted extraction (profile/engagement/procedure) depends on an
-  external service (Groq) or a slow local fallback (Ollama, ~100s cold
-  start on CPU-only hardware)** — see `../freep-ict-job-pipeline/
-  CLAUDE.md`'s "LLM provider" entry.
+- **LLM-assisted extraction (profile/engagement/procedure) depends on two
+  external services (OpenAI primary, Groq fallback)** — no local fallback
+  is wired in; if both are unreachable or rate-limited, these fields are
+  simply left empty for that scan rather than blocking it (never a reason
+  to fabricate — see `extraction/llm_field_extractor.py`).
 - **AC13** (sample jointly validated against the live Freep source by
   Dreev) has not been done — needs a human review pass, not a technical
   fix.

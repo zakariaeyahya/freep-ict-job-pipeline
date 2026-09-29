@@ -23,7 +23,7 @@ src/freep_pipeline/
   tracking/                derive change_type across scans
   storage/                 PostgreSQL models + repository
   contracts/               JobRecord mapper + JSON Schema validator (AC12/AC14)
-  extraction/              LLM-assisted profile/engagement/procedure extraction (Groq/Ollama)
+  extraction/              LLM-assisted profile/engagement/procedure extraction (OpenAI/Groq)
   api/                     FastAPI app: /api/v1 routes, services, JWT auth
   models/                  Pydantic domain models
   pipeline.py              orchestrates one full scan run
@@ -49,11 +49,11 @@ docker compose up --build
 The frontend is at http://localhost:3000, the API at
 http://localhost:8000, and the Keycloak admin console at
 http://localhost:8080. PostgreSQL and Keycloak data persist in Docker
-volumes. Configure the `dreev` realm and its clients/users using the
-Auth (Keycloak) steps below; the API uses
+volumes. No manual Keycloak setup is needed — the `dreev` realm and its
+clients import automatically and the `keycloak-init` service pushes the
+secrets from `.env`; see "Auth (Keycloak)" below. The API uses
 `http://keycloak:8080/realms/dreev` as the issuer inside the Compose
-network. Set `KEYCLOAK_REVIEWER_CLIENT_SECRET` in the root `.env` to the
-review UI client's actual secret before signing in.
+network.
 
 Stop the containers with `docker compose down`; add `-v` only when you
 intentionally want to delete the persisted database and Keycloak data.
@@ -80,23 +80,6 @@ docker compose up -d
 For deployment on a different domain, set `NEXT_PUBLIC_API_BASE_URL` to
 the public API URL before building the frontend image and rebuild it;
 this value is embedded in the browser bundle at build time.
-
-### Build and publish Ollama with its model
-
-The optional Ollama image downloads `qwen2.5:7b-instruct` during its
-build, so the model is included in the image pushed to Docker Hub. This
-makes the image several gigabytes larger and requires downloading the
-model again whenever that image is rebuilt.
-
-```bash
-docker compose --profile llm build ollama
-docker compose --profile llm push ollama
-docker compose --profile llm up -d
-```
-
-The backend reaches Ollama at `http://ollama:11434` on the Compose
-network. Change `OLLAMA_MODEL` in the root `.env` before building to
-include a different model.
 
 ## API surface
 
@@ -127,15 +110,13 @@ invention — see the module's docstring for the anti-fabrication guarantee).
 `JobParser` from a real HTML badge and always takes priority over the
 LLM's guess when present.
 
-`FallbackLlmClient` tries Groq first (fast, needs `GROQ_API_KEY`), falling
-back to a local Ollama container if Groq is unavailable:
+`FallbackLlmClient` tries OpenAI first (needs `OPENAI_API_KEY`), falling
+back to Groq (`GROQ_API_KEY`) if OpenAI is unavailable. There is no local
+fallback — on a CPU-only host a local model's response time can dominate
+a scan's wall-clock time, so extraction here is OpenAI-or-Groq-or-nothing
+(brief's "never blocks a scan" rule for best-effort extraction).
 
-```bash
-docker run -d --name freep-ollama -p 11434:11434 -v ollama_data:/root/.ollama ollama/ollama:latest
-docker exec freep-ollama ollama pull qwen2.5:7b-instruct
-```
-
-Set `GROQ_API_KEY` / `GROQ_MODEL` and `OLLAMA_BASE_URL` / `OLLAMA_MODEL` in
+Set `OPENAI_API_KEY` / `OPENAI_MODEL` and `GROQ_API_KEY` / `GROQ_MODEL` in
 `.env` (see `.env.example`). Extraction is best-effort: if both providers
 are unavailable, the scan continues and these fields are simply left
 empty for that job — never blocks a scan.
@@ -144,7 +125,7 @@ Manual one-job sanity check against a real sample (never run against the
 full dataset — costs time/quota):
 
 ```bash
-python scripts/test_llm_extraction.py --provider fallback  # or groq / ollama
+python scripts/test_llm_extraction.py --provider fallback  # or openai / groq
 ```
 
 ## Auth (Keycloak)
@@ -153,71 +134,62 @@ The API (`src/freep_pipeline/api/`) verifies a Keycloak-issued JWT
 (signature, expiration, issuer, audience) on every job/scan/export
 endpoint — `GET /api/v1/health` is the only unauthenticated route.
 
-1. Start Keycloak:
+The `dreev` realm and its three clients are defined in
+[`../docker/keycloak/dreev-realm.json`](../docker/keycloak/dreev-realm.json)
+and import automatically the first time the `keycloak` container starts
+(`--import-realm`), so no manual admin-console setup is needed on any
+machine:
 
-   ```bash
-   docker run -d --name freep-keycloak -p 8080:8080 \
-     -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin \
-     quay.io/keycloak/keycloak:25.0 start-dev
-   ```
+- **`freep-pipeline-api`** — confidential, no standard flow, no direct
+  access grants, no service account. The resource server the API
+  identifies itself as; it never itself requests tokens.
+- **`freep-test-client`** — confidential, service accounts enabled, for
+  the independent test client (AC15) to authenticate via
+  `client_credentials`. Carries an audience mapper
+  (`included.client.audience=freep-pipeline-api`) so its tokens have the
+  right `aud` claim.
+- **`freep-reviewer-ui`** — confidential, **Direct Access Grants only**
+  (this is what allows the ROPC grant, `grant_type=password`, the login
+  endpoint uses — the UI never redirects to Keycloak directly, only the
+  backend talks to it), with the same audience mapper already attached.
+  Without it, tokens from this client would carry `aud: "account"`
+  (Keycloak's default) and every protected endpoint would reject them
+  with 401 — a real pitfall hit during initial setup, now baked into the
+  committed realm JSON so it can't recur.
 
-2. Create a realm named `dreev`.
-3. Create a client `freep-pipeline-api` (confidential, no standard flow,
-   no direct access grants, no service account) — this is the resource
-   server the API identifies itself as; it never itself requests tokens.
-4. Create a client `freep-test-client` (confidential, service accounts
-   enabled) for the independent test client (AC15) to authenticate as via
-   the `client_credentials` grant. Add an audience mapper
-   (`oidc-audience-mapper`, `included.client.audience=freep-pipeline-api`)
-   so its tokens carry the right `aud` claim.
-5. Set `KEYCLOAK_ISSUER_URL` / `KEYCLOAK_API_AUDIENCE` in `.env` (see
-   `.env.example`), and `FREEP_TEST_CLIENT_ID` / `FREEP_TEST_CLIENT_SECRET`
-   for the test client.
-6. Create a client `freep-reviewer-ui` (confidential) for
-   `POST /api/v1/auth/login` (the review UI's human login):
-   - Client authentication: **ON**.
-   - Authentication flow: enable only **Direct Access Grants** (this is
-     what allows the ROPC grant, `grant_type=password`, the login endpoint
-     uses) — leave Standard Flow / Implicit Flow / Service accounts off;
-     the UI never redirects to Keycloak directly, only the backend talks
-     to it.
-   - Add an audience mapper so its tokens actually work against this API:
-     Client scopes → `freep-reviewer-ui-dedicated` → Add mapper → By
-     configuration → **Audience** → Included Client Audience =
-     `freep-pipeline-api`, Add to access token = On. Without this, tokens
-     from this client carry `aud: "account"` (Keycloak's default) and
-     every protected endpoint rejects them with 401 — this bit us during
-     setup and is easy to miss.
-   - Copy the **Client secret** (Credentials tab) into
-     `KEYCLOAK_REVIEWER_CLIENT_ID` / `KEYCLOAK_REVIEWER_CLIENT_SECRET` in
-     `.env`.
-7. Create at least one real user in the `dreev` realm (Users → Add user)
-   for reviewers to log in with — this replaces the frontend's old
-   hardcoded demo account (`src/lib/auth/session.ts`, removed from the
-   frontend repo). Keycloak's ROPC grant fails with
-   `invalid_grant: "Account is not fully set up"` unless the user is
-   fully complete, so when creating the user set **all** of:
-   - **Email**, and toggle **Email verified** to On.
-   - **First name** and **Last name** — Keycloak (recent versions) treats
-     these as required for the account to count as "set up", even though
-     neither the create-user form nor any validation error says so; a
-     user missing either one fails ROPC with the same opaque error as a
-     wrong password, which cost real debugging time here.
-   - Then Credentials tab → Set password → **Temporary: Off**.
-   - Check Details tab → **Required user actions** is empty (no leftover
-     "Update Password"/"Verify Email").
+Right after Keycloak imports the realm, the `keycloak-init` service (see
+[`../docker/keycloak/init-secrets.sh`](../docker/keycloak/init-secrets.sh))
+runs once and:
 
-   Quick way to verify a user/client pair works before wiring up the UI:
+1. Sets `freep-reviewer-ui` and `freep-test-client`'s secrets from
+   `KEYCLOAK_REVIEWER_CLIENT_SECRET` / `FREEP_TEST_CLIENT_SECRET` in
+   `.env` — the committed realm JSON never contains real secrets
+   (Keycloak strips them from any export).
+2. Creates (or updates) a reviewer user from `REVIEWER_USERNAME` /
+   `REVIEWER_PASSWORD` / `REVIEWER_EMAIL` in `.env`, with email verified,
+   first/last name set, and a non-temporary password — all the fields
+   Keycloak's ROPC grant silently requires for an account to count as
+   "fully set up" (a user missing any of these fails with the same opaque
+   `invalid_grant` error as a wrong password, which cost real debugging
+   time before this was automated).
 
-   ```bash
-   curl -s -X POST http://localhost:8080/realms/dreev/protocol/openid-connect/token \
-     -d grant_type=password -d client_id=freep-reviewer-ui \
-     -d client_secret=<secret> -d username=<user> -d password=<pass> -d scope=openid
-   ```
+Both steps are idempotent: restarting the stack or redeploying to a new
+machine never repeats manual setup — it only needs a `.env` with the
+right secrets (see `.env.example` at the repo root).
 
-   A real `access_token` in the response means Keycloak is fully set up;
-   an `invalid_grant`/`invalid_client` error means the client/user, not
-   the API code, needs fixing.
+Quick way to verify a user/client pair works:
+
+```bash
+curl -s -X POST http://localhost:8080/realms/dreev/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=freep-reviewer-ui \
+  -d client_secret=<KEYCLOAK_REVIEWER_CLIENT_SECRET> \
+  -d username=<REVIEWER_USERNAME> -d password=<REVIEWER_PASSWORD> -d scope=openid
+```
+
+A real `access_token` in the response means Keycloak is fully set up; an
+`invalid_grant`/`invalid_client` error means a `.env` value is out of
+sync with what `keycloak-init` actually pushed (check
+`docker compose logs keycloak-init`), not the API code.
 
 ## CORS
 

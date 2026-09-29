@@ -1,5 +1,5 @@
-"""FallbackLlmClient: Groq primary, Ollama fallback. Verifies the actual
-fallback behavior — Ollama is only ever called when Groq fails — using
+"""FallbackLlmClient: OpenAI primary, Groq fallback. Verifies the actual
+fallback behavior — Groq is only ever called when OpenAI fails — using
 fake clients so no real network call happens in this suite.
 """
 
@@ -9,7 +9,7 @@ import pytest
 
 from src.freep_pipeline.extraction.fallback_llm_client import FallbackLlmClient
 from src.freep_pipeline.extraction.groq_client import GroqUnavailableError
-from src.freep_pipeline.extraction.ollama_client import OllamaUnavailableError
+from src.freep_pipeline.extraction.openai_client import OpenAiUnavailableError
 
 
 class _FakeClient:
@@ -25,58 +25,59 @@ class _FakeClient:
         return self._response
 
 
-def test_uses_groq_result_without_touching_ollama_when_groq_succeeds() -> None:
-    groq = _FakeClient(response={"skills": ["Python"]})
-    ollama = _FakeClient(response={"skills": ["should never be returned"]})
-    client = FallbackLlmClient(primary=groq, fallback=ollama)
+def test_uses_openai_result_without_touching_groq_when_openai_succeeds() -> None:
+    openai = _FakeClient(response={"skills": ["Python"]})
+    groq = _FakeClient(response={"skills": ["should never be returned"]})
+    client = FallbackLlmClient(primary=openai, fallback=groq)
 
     result = client.generate_json("system", "user")
 
     assert result == {"skills": ["Python"]}
-    assert groq.calls == 1
-    assert ollama.calls == 0
+    assert openai.calls == 1
+    assert groq.calls == 0
 
 
-def test_falls_back_to_ollama_when_groq_raises() -> None:
-    groq = _FakeClient(raises=GroqUnavailableError("rate limited"))
-    ollama = _FakeClient(response={"skills": ["from ollama"]})
-    client = FallbackLlmClient(primary=groq, fallback=ollama)
+def test_falls_back_to_groq_when_openai_raises() -> None:
+    openai = _FakeClient(raises=OpenAiUnavailableError("rate limited"))
+    groq = _FakeClient(response={"skills": ["from groq"]})
+    client = FallbackLlmClient(primary=openai, fallback=groq)
 
     result = client.generate_json("system", "user")
 
-    assert result == {"skills": ["from ollama"]}
+    assert result == {"skills": ["from groq"]}
+    assert openai.calls == 1
     assert groq.calls == 1
-    assert ollama.calls == 1
 
 
 def test_raises_when_both_providers_fail() -> None:
-    groq = _FakeClient(raises=GroqUnavailableError("rate limited"))
-    ollama = _FakeClient(raises=OllamaUnavailableError("connection refused"))
-    client = FallbackLlmClient(primary=groq, fallback=ollama)
+    openai = _FakeClient(raises=OpenAiUnavailableError("rate limited"))
+    groq = _FakeClient(raises=GroqUnavailableError("connection refused"))
+    client = FallbackLlmClient(primary=openai, fallback=groq)
 
-    with pytest.raises(OllamaUnavailableError):
+    with pytest.raises(GroqUnavailableError):
         client.generate_json("system", "user")
 
+    assert openai.calls == 1
     assert groq.calls == 1
-    assert ollama.calls == 1
 
 
-def test_missing_groq_api_key_skips_straight_to_ollama(monkeypatch) -> None:
-    """FallbackLlmClient(primary=None) tries to construct a real GroqClient
-    lazily — if that fails (e.g. no GROQ_API_KEY configured), it must fall
-    back to Ollama rather than propagating the construction error. Forces
-    the "no key" path regardless of this environment's actual .env, so the
-    test doesn't depend on whether GROQ_API_KEY happens to be set."""
+def test_missing_openai_api_key_skips_straight_to_groq(monkeypatch) -> None:
+    """FallbackLlmClient(primary=None) tries to construct a real
+    OpenAiClient lazily — if that fails (e.g. no OPENAI_API_KEY
+    configured), it must fall back to Groq rather than propagating the
+    construction error. Forces the "no key" path regardless of this
+    environment's actual .env, so the test doesn't depend on whether
+    OPENAI_API_KEY happens to be set."""
     from src.freep_pipeline.extraction import fallback_llm_client
 
     def _raise_no_key(*args, **kwargs):
-        raise GroqUnavailableError("GROQ_API_KEY is not set")
+        raise OpenAiUnavailableError("OPENAI_API_KEY is not set")
 
-    monkeypatch.setattr(fallback_llm_client, "GroqClient", _raise_no_key)
-    ollama = _FakeClient(response={"skills": ["from ollama"]})
-    client = FallbackLlmClient(primary=None, fallback=ollama)
+    monkeypatch.setattr(fallback_llm_client, "OpenAiClient", _raise_no_key)
+    groq = _FakeClient(response={"skills": ["from groq"]})
+    client = FallbackLlmClient(primary=None, fallback=groq)
 
     result = client.generate_json("system", "user")
 
-    assert result == {"skills": ["from ollama"]}
-    assert ollama.calls == 1
+    assert result == {"skills": ["from groq"]}
+    assert groq.calls == 1
