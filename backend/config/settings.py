@@ -104,10 +104,11 @@ KEYCLOAK_API_AUDIENCE = os.environ.get("KEYCLOAK_API_AUDIENCE", "freep-pipeline-
 # text to a third-party API.
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b-instruct")
-# CPU-only inference (no GPU detected) makes a 7B model's cold start slow
-# (~80s just to load into memory on this machine) — generous timeout so a
-# cold start doesn't get mistaken for Ollama being unavailable.
-OLLAMA_TIMEOUT_SECONDS = 180
+# CPU-only inference (no GPU detected) makes a 7B model's response time
+# highly variable (~100s observed for even a short prompt on this
+# machine). No timeout is applied (see OllamaClient) — set this only if
+# you later want to reintroduce a cutoff.
+OLLAMA_TIMEOUT_SECONDS = None
 
 # --------------------------------------------------------------------------
 # Groq (temporary stand-in for Ollama while a local model is being pulled)

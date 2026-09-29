@@ -24,13 +24,21 @@ class OllamaUnavailableError(Exception):
 
 
 class OllamaClient:
-    """Calls Ollama's /api/chat with JSON-mode output enabled."""
+    """Calls Ollama's /api/chat with JSON-mode output enabled.
+
+    No request timeout by default (timeout_seconds=None): on a CPU-only
+    Ollama host, model load + inference time is highly variable (observed
+    ~100s cold start for a single short prompt on this machine) and an
+    arbitrary cutoff would reject valid-but-slow responses rather than
+    actual failures. A deliberate deviation from the project's usual
+    "always set an outbound timeout" rule, made for this specific
+    hardware-bound case — not a default to copy elsewhere."""
 
     def __init__(
         self,
         base_url: str = OLLAMA_BASE_URL,
         model: str = OLLAMA_MODEL,
-        timeout_seconds: int = OLLAMA_TIMEOUT_SECONDS,
+        timeout_seconds: int | None = OLLAMA_TIMEOUT_SECONDS,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._model = model
