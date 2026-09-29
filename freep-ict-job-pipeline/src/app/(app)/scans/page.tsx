@@ -5,6 +5,7 @@ import { useState } from "react";
 import { fetchLatestScan } from "@/api/scans";
 import { downloadScanExport } from "@/api/exports";
 import { useApiResource } from "@/lib/use-api-resource";
+import { useScanTrigger, type ScanTriggerState } from "@/lib/use-scan-trigger";
 import { ScanStatusBadge } from "@/components/scans/scan-status-badge";
 import { ScanConfigCard } from "@/components/scans/scan-config-card";
 import { ConvergenceRounds } from "@/components/scans/convergence-rounds";
@@ -14,12 +15,15 @@ import { ErrorsList } from "@/components/scans/errors-list";
 import { IncompleteWarningBanner } from "@/components/scans/incomplete-warning-banner";
 import { SectionHeader } from "@/components/layout/section-header";
 import { LoadingState, ErrorState } from "@/components/layout/async-state";
-import { BarChartIcon, DownloadIcon, MoreIcon } from "@/components/icons";
+import { BarChartIcon, DownloadIcon, PlayIcon } from "@/components/icons";
 
 export default function ScanReportPage() {
   const scanState = useApiResource(() => fetchLatestScan(), []);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const scan = scanState.status === "success" ? scanState.data : null;
+  const scanTrigger = useScanTrigger(scan, fetchLatestScan, () => scanState.refetch());
 
   async function handleDownload(scanId: string) {
     setDownloading(true);
@@ -38,11 +42,11 @@ export default function ScanReportPage() {
     return <ErrorState message={scanState.error} onRetry={scanState.refetch} />;
   }
 
-  const scan = scanState.data;
   if (!scan) {
     return (
-      <div className="rounded-2xl border border-[#E5EAF2] bg-white px-4 py-16 text-center text-sm text-[#64748B] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-        No scan has been recorded yet.
+      <div className="flex flex-col items-center gap-4 rounded-2xl border border-[#E5EAF2] bg-white px-4 py-16 text-center dark:border-zinc-800 dark:bg-zinc-900">
+        <p className="text-sm text-[#64748B] dark:text-zinc-400">No scan has been recorded yet.</p>
+        <RunScanButton scanTrigger={scanTrigger} />
       </div>
     );
   }
@@ -71,19 +75,21 @@ export default function ScanReportPage() {
               <DownloadIcon />
               {downloading ? "Downloading…" : "Download report"}
             </button>
-            <button
-              type="button"
-              disabled
-              aria-label="More actions"
-              title="No further actions are available yet."
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5EAF2] bg-white text-[#64748B] outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
-            >
-              <MoreIcon />
-            </button>
+            <RunScanButton scanTrigger={scanTrigger} />
           </div>
           {downloadError ? (
             <p role="alert" className="text-xs text-red-700 dark:text-red-400">
               {downloadError}
+            </p>
+          ) : null}
+          {scanTrigger.state === "error" && scanTrigger.error ? (
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+              {scanTrigger.error}
+            </p>
+          ) : null}
+          {scanTrigger.state === "running" ? (
+            <p role="status" className="text-xs text-[#64748B] dark:text-zinc-400">
+              Scan in progress — this page will update automatically.
             </p>
           ) : null}
         </div>
@@ -106,5 +112,27 @@ export default function ScanReportPage() {
       <RoutesTable routes={scan.routes} />
       <ErrorsList errors={scan.errors} />
     </div>
+  );
+}
+
+function RunScanButton({
+  scanTrigger,
+}: {
+  scanTrigger: { state: ScanTriggerState; start: () => void };
+}) {
+  const isBusy = scanTrigger.state === "starting" || scanTrigger.state === "running";
+  const label =
+    scanTrigger.state === "starting" ? "Starting…" : scanTrigger.state === "running" ? "Running…" : "Run scan now";
+
+  return (
+    <button
+      type="button"
+      onClick={scanTrigger.start}
+      disabled={isBusy}
+      className="flex items-center gap-2 rounded-xl bg-violet-600 px-3.5 py-2 text-sm font-medium text-white outline-none hover:bg-violet-700 focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-zinc-950"
+    >
+      <PlayIcon />
+      {label}
+    </button>
   );
 }

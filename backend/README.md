@@ -2,10 +2,12 @@
 
 Discovers, fetches, parses, validates and stores ICT job listings from
 Freep. See `../freep-ict-job-pipeline/CLAUDE.md` for the full data
-contract and API surface this backend must implement, and
-[`DISCOVERY_REPORT.md`](DISCOVERY_REPORT.md) for the source analysis,
+contract and API surface this backend must implement,
+[`../docs/DISCOVERY_REPORT.md`](../docs/DISCOVERY_REPORT.md) for the source analysis,
 robots.txt/terms-of-use review, and open legal/operational questions
-(brief §9.1, §7).
+(brief §9.1, §7), [`RUNBOOK.md`](RUNBOOK.md) for installation/operations,
+and [`SOLUTION_PROPOSAL.md`](SOLUTION_PROPOSAL.md) for the scan-worker
+architecture decision.
 
 ## Structure
 
@@ -44,6 +46,7 @@ Create the venv, install `requirements.txt`, copy `.env.example` to
 | `GET /api/v1/jobs/{internal_job_id}/versions` | Past observations of one job (excludes the current state) |
 | `GET /api/v1/scans` | Paginated scan run list, most recent first |
 | `GET /api/v1/scans/{scan_id}` | One scan run's full report |
+| `POST /api/v1/scans/trigger` | Starts a scan on a background thread, returns `202` immediately (409 if one is already running) |
 | `GET /api/v1/exports/{scan_id}.jsonl` | One schema-validated `JobRecord` per line, UTF-8, for every job observed during that scan |
 | `GET /api/v1/health` | Liveness + freshness of the last published scan (unauthenticated) |
 

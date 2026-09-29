@@ -101,6 +101,14 @@ export function DownloadIcon() {
   );
 }
 
+export function PlayIcon() {
+  return (
+    <svg {...baseProps()} fill="currentColor" stroke="none">
+      <path d="M8 5v14l11-7-11-7Z" />
+    </svg>
+  );
+}
+
 export function MoreIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">

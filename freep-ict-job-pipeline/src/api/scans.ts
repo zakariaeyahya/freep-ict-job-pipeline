@@ -29,3 +29,12 @@ export async function fetchLatestScan(): Promise<ScanRun | null> {
   const scans = await fetchScans({ limit: 1 });
   return scans[0] ?? null;
 }
+
+// POST /api/v1/scans/trigger — starts a scan on the backend's side and
+// returns immediately (202); the scan itself can take minutes. Callers
+// poll fetchLatestScan()/fetchScans() to see it appear once finished.
+// Throws ApiError with status 409 (via apiFetch) if a scan is already
+// running.
+export async function triggerScan(): Promise<void> {
+  await apiFetch<{ status: string }>("/api/v1/scans/trigger", { method: "POST" });
+}
