@@ -105,3 +105,14 @@ KEYCLOAK_API_AUDIENCE = os.environ.get("KEYCLOAK_API_AUDIENCE", "freep-pipeline-
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b-instruct")
 OLLAMA_TIMEOUT_SECONDS = 60
+
+# --------------------------------------------------------------------------
+# Groq (temporary stand-in for Ollama while a local model is being pulled)
+# --------------------------------------------------------------------------
+
+# GROQ_API_KEY is a real secret — env var only, never committed, never
+# logged. This provider is meant to be swapped back to Ollama once a local
+# model is available (see extraction/groq_client.py's docstring).
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+GROQ_TIMEOUT_SECONDS = 60
