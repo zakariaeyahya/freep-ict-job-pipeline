@@ -12,12 +12,15 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from src.freep_pipeline.api.routes import health, jobs
+from src.freep_pipeline.api.routes import exports, health, jobs, scans
 from src.freep_pipeline.api.services.job_service import JobNotFoundError
+from src.freep_pipeline.api.services.scan_service import ScanNotFoundError
 
 app = FastAPI(title="Freep ICT Job Pipeline API", version="1.0")
 
 app.include_router(jobs.router)
+app.include_router(scans.router)
+app.include_router(exports.router)
 app.include_router(health.router)
 
 
@@ -38,6 +41,14 @@ def handle_job_not_found(request: Request, exc: JobNotFoundError) -> JSONRespons
     return JSONResponse(
         status_code=404,
         content=_error_body(request, 404, "job_not_found", str(exc)),
+    )
+
+
+@app.exception_handler(ScanNotFoundError)
+def handle_scan_not_found(request: Request, exc: ScanNotFoundError) -> JSONResponse:
+    return JSONResponse(
+        status_code=404,
+        content=_error_body(request, 404, "scan_not_found", str(exc)),
     )
 
 

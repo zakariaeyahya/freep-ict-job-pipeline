@@ -205,6 +205,67 @@ class JobRepository:
 
         return counts
 
+    def list_observations(self, source_job_id: str) -> list[JobObservation]:
+        """All immutable observations of one job, oldest first — the raw
+        material for GET /jobs/{id}/versions (brief §5.1)."""
+        with self._session_factory() as session:
+            observations = (
+                session.query(JobObservation)
+                .filter(JobObservation.source_job_id == source_job_id)
+                .order_by(JobObservation.observed_at.asc())
+                .all()
+            )
+            for observation in observations:
+                session.expunge(observation)
+            return observations
+
+    def list_scan_runs(self, limit: int = 50, offset: int = 0) -> list[ScanRunModel]:
+        """Most recent scan runs first, for GET /scans (brief §5.1)."""
+        with self._session_factory() as session:
+            scans = (
+                session.query(ScanRunModel)
+                .order_by(ScanRunModel.started_at.desc())
+                .offset(offset)
+                .limit(limit)
+                .all()
+            )
+            for scan in scans:
+                self._load_scan_children(session, scan)
+                session.expunge(scan)
+            return scans
+
+    def get_scan_run(self, scan_id: str) -> ScanRunModel | None:
+        """One scan run by id, with its routes/errors, for GET
+        /scans/{scan_id} and the JSONL export (brief §5.1, §5.2)."""
+        with self._session_factory() as session:
+            scan = session.get(ScanRunModel, scan_id)
+            if scan is None:
+                return None
+            self._load_scan_children(session, scan)
+            session.expunge(scan)
+            return scan
+
+    @staticmethod
+    def _load_scan_children(session: Session, scan: ScanRunModel) -> None:
+        # Force-load relationships before expunge — accessing them after
+        # the session closes would raise DetachedInstanceError.
+        _ = list(scan.routes)
+        _ = list(scan.errors)
+
+    def list_observed_source_job_ids(self, scan_id: str) -> list[str]:
+        """Distinct source_job_ids observed during one scan, in first-seen
+        order — drives the per-scan JSONL export (brief §5.2: 'one job per
+        line')."""
+        with self._session_factory() as session:
+            rows = (
+                session.query(JobObservation.source_job_id)
+                .filter(JobObservation.scan_id == scan_id)
+                .distinct()
+                .order_by(JobObservation.source_job_id.asc())
+                .all()
+            )
+            return [row[0] for row in rows]
+
     def get_last_published_scan(self) -> ScanRunModel | None:
         """The most recently published (successful) scan, for GET /health's
         freshness signal (brief §4.1 "Freshness and audit"). Deliberately

@@ -133,6 +133,75 @@ class JobListResponse(BaseModel):
     offset: int
 
 
+class JobVersionEntry(BaseModel):
+    record_version: int
+    observed_at: str
+    change_type: str
+    content_hash: str
+    summary: str
+
+
+class JobVersionsResponse(BaseModel):
+    items: list[JobVersionEntry]
+
+
+class RouteVisit(BaseModel):
+    url: str
+    pages_visited: int
+    result: str
+    error: str | None
+
+
+class ConvergenceRound(BaseModel):
+    round: int
+    new_routes_discovered: int
+    converged: bool
+    observed_at: str
+
+
+class ScanCounts(BaseModel):
+    discovered: int
+    processed: int
+    duplicates: int
+    new: int
+    changed: int
+    closed: int
+    temporarily_not_found: int
+    errors: int
+
+
+class ScanErrorEntry(BaseModel):
+    reference: str
+    reason: str
+    retry_count: int
+    recovery_status: str
+
+
+class PublishedStatus(BaseModel):
+    value: bool
+    reason: str | None
+
+
+class ScanRunResponse(BaseModel):
+    scan_id: str
+    started_at: str
+    ended_at: str
+    config: str
+    routes: list[RouteVisit]
+    convergence_rounds: list[ConvergenceRound]
+    counts: ScanCounts
+    dedup_rule: str
+    scan_status: str
+    published: PublishedStatus
+    errors: list[ScanErrorEntry]
+
+
+class ScanListResponse(BaseModel):
+    items: list[ScanRunResponse]
+    limit: int
+    offset: int
+
+
 class HealthResponse(BaseModel):
     status: str
     last_successful_scan_id: str | None

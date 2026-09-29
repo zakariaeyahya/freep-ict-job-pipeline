@@ -1,12 +1,13 @@
-"""GET /jobs, GET /jobs/{internal_job_id} — routes only map request/response,
-per CLAUDE.md; all logic lives in JobService."""
+"""GET /jobs, GET /jobs/{internal_job_id}, GET /jobs/{internal_job_id}/versions
+— routes only map request/response, per CLAUDE.md; all logic lives in
+JobService."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
 from src.freep_pipeline.api.auth.jwt_verifier import AuthenticatedPrincipal, verify_access_token
-from src.freep_pipeline.api.schemas import JobListResponse, JobRecordResponse
+from src.freep_pipeline.api.schemas import JobListResponse, JobRecordResponse, JobVersionsResponse
 from src.freep_pipeline.api.services.job_service import JobService
 
 router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
@@ -38,3 +39,14 @@ def get_job(
     # JobNotFoundError propagates to the app-level exception handler,
     # which maps it to a 404 with the uniform error body.
     return service.get_job(internal_job_id)
+
+
+@router.get("/{internal_job_id}/versions", response_model=JobVersionsResponse)
+def get_job_versions(
+    internal_job_id: str,
+    _principal: AuthenticatedPrincipal = Depends(verify_access_token),
+    service: JobService = Depends(get_job_service),
+) -> JobVersionsResponse:
+    # JobNotFoundError (no observation at all for this id) propagates to
+    # the app-level exception handler -> 404.
+    return JobVersionsResponse(items=service.get_versions(internal_job_id))
