@@ -109,6 +109,19 @@ endpoint — `GET /api/v1/health` is the only unauthenticated route.
 5. Set `KEYCLOAK_ISSUER_URL` / `KEYCLOAK_API_AUDIENCE` in `.env` (see
    `.env.example`), and `FREEP_TEST_CLIENT_ID` / `FREEP_TEST_CLIENT_SECRET`
    for the test client.
+6. Create a client `freep-reviewer-ui` (confidential) for
+   `POST /api/v1/auth/login` (the review UI's human login):
+   - Enable **Direct Access Grants** (Settings → Capability config) — this
+     is what allows the ROPC grant (`grant_type=password`) the login
+     endpoint uses.
+   - Leave Standard Flow / Implicit Flow off; the UI never redirects to
+     Keycloak directly, only the backend talks to it.
+   - Set `KEYCLOAK_REVIEWER_CLIENT_ID` / `KEYCLOAK_REVIEWER_CLIENT_SECRET`
+     in `.env`.
+7. Create at least one real user in the `dreev` realm (Users → Add user,
+   then Credentials tab to set a password, "Temporary" off) for reviewers
+   to log in with — this replaces the frontend's old hardcoded demo
+   account (`src/lib/auth/session.ts` in the frontend repo).
 
 ## Running the API
 

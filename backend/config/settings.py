@@ -92,6 +92,17 @@ KEYCLOAK_JWKS_URL = f"{KEYCLOAK_ISSUER_URL}/protocol/openid-connect/certs"
 # actually issued for this API and must be rejected.
 KEYCLOAK_API_AUDIENCE = os.environ.get("KEYCLOAK_API_AUDIENCE", "freep-pipeline-api")
 
+KEYCLOAK_TOKEN_URL = f"{KEYCLOAK_ISSUER_URL}/protocol/openid-connect/token"
+
+# Client used for the human login endpoint (POST /api/v1/auth/login),
+# distinct from freep-pipeline-api (the resource server, which cannot
+# itself request tokens) and freep-test-client (service account, AC15).
+# Must have "Direct Access Grants" enabled in Keycloak (Resource Owner
+# Password Credentials grant) — the API forwards the caller's email/
+# password to Keycloak and never stores or checks a password itself.
+KEYCLOAK_REVIEWER_CLIENT_ID = os.environ.get("KEYCLOAK_REVIEWER_CLIENT_ID", "freep-reviewer-ui")
+KEYCLOAK_REVIEWER_CLIENT_SECRET = os.environ.get("KEYCLOAK_REVIEWER_CLIENT_SECRET", "")
+
 # --------------------------------------------------------------------------
 # LLM field extraction (Ollama, image ollama/ollama:latest, local — no
 # secrets leave the machine)

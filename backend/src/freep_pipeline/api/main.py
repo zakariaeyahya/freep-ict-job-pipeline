@@ -12,12 +12,14 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from src.freep_pipeline.api.routes import exports, health, jobs, scans
+from src.freep_pipeline.api.routes import auth, exports, health, jobs, scans
+from src.freep_pipeline.api.services.auth_service import InvalidCredentialsError
 from src.freep_pipeline.api.services.job_service import JobNotFoundError
 from src.freep_pipeline.api.services.scan_service import ScanNotFoundError
 
 app = FastAPI(title="Freep ICT Job Pipeline API", version="1.0")
 
+app.include_router(auth.router)
 app.include_router(jobs.router)
 app.include_router(scans.router)
 app.include_router(exports.router)
@@ -34,6 +36,14 @@ def _error_body(request: Request, status_code: int, error: str, message: str) ->
         "message": message,
         "path": request.url.path,
     }
+
+
+@app.exception_handler(InvalidCredentialsError)
+def handle_invalid_credentials(request: Request, exc: InvalidCredentialsError) -> JSONResponse:
+    return JSONResponse(
+        status_code=401,
+        content=_error_body(request, 401, "invalid_credentials", str(exc)),
+    )
 
 
 @app.exception_handler(JobNotFoundError)

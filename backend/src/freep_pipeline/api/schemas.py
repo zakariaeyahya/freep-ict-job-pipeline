@@ -202,6 +202,18 @@ class ScanListResponse(BaseModel):
     offset: int
 
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    expires_in: int
+    refresh_token: str | None
+    refresh_expires_in: int | None
+
+
 class HealthResponse(BaseModel):
     status: str
     last_successful_scan_id: str | None
