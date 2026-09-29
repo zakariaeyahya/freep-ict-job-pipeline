@@ -1,3 +1,15 @@
 .env
 .env.*
 !.env.example
+
+# Scan exports and working documents kept locally, not part of the repo
+*.jsonl
+*.docx
+*.ipynb
+offre.md
+
+# LaTeX build artifacts (docs/*.pdf is the committed, compiled output)
+*.aux
+*.log
+*.out
+*.toc
