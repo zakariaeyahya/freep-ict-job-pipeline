@@ -1,10 +1,11 @@
 """Manual, one-job sanity check for LlmFieldExtractor against a real
 sample (../../offre.md's first offer, "Senior mendix developer"/Rechtspraak).
 
-Deliberately NOT a pytest test and NOT run against the full dataset: while
-GROQ_API_KEY is a temporary stand-in for a not-yet-pulled local Ollama
-model, this avoids burning API quota/rate limits on the whole corpus. Swap
-client=GroqClient() back to client=OllamaClient() once a model is pulled.
+Deliberately NOT a pytest test and NOT run against the full dataset: keeps
+the check fast and focused on one known example while the prompt/
+extraction logic is still being validated. Defaults to the local Ollama
+model; pass --provider groq to fall back to Groq if Ollama is down or
+misbehaving (GROQ_API_KEY must be set in .env for that).
 
 Note: contract_type is expected to stay null here — this script only feeds
 hard_requirements/wishes, but contract_type ("detachering"/"freelance") in
@@ -13,11 +14,12 @@ selector, not from the LLM (see pipeline.py's _enrich_with_llm_fields: the
 parser's value always wins when present).
 
 Usage:
-    python scripts/test_llm_extraction.py
+    python scripts/test_llm_extraction.py [--provider ollama|groq]
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -26,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.freep_pipeline.extraction.groq_client import GroqClient
 from src.freep_pipeline.extraction.llm_field_extractor import LlmFieldExtractor
+from src.freep_pipeline.extraction.ollama_client import OllamaClient
 
 TITLE = "Senior mendix developer"
 
@@ -43,8 +46,9 @@ WISHES = [
 ]
 
 
-def main() -> None:
-    extractor = LlmFieldExtractor(client=GroqClient())
+def main(provider: str) -> None:
+    client = GroqClient() if provider == "groq" else OllamaClient()
+    extractor = LlmFieldExtractor(client=client)
 
     result = extractor.extract(title=TITLE, hard_requirements=HARD_REQUIREMENTS, wishes=WISHES)
 
@@ -52,4 +56,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--provider", choices=["ollama", "groq"], default="ollama")
+    args = parser.parse_args()
+    main(args.provider)
