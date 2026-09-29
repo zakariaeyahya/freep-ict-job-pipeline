@@ -104,6 +104,19 @@ KEYCLOAK_REVIEWER_CLIENT_ID = os.environ.get("KEYCLOAK_REVIEWER_CLIENT_ID", "fre
 KEYCLOAK_REVIEWER_CLIENT_SECRET = os.environ.get("KEYCLOAK_REVIEWER_CLIENT_SECRET", "")
 
 # --------------------------------------------------------------------------
+# CORS
+# --------------------------------------------------------------------------
+
+# The review UI (freep-ict-job-pipeline, a separate Next.js app/origin)
+# calls this API from the browser — comma-separated, never "*"
+# (CLAUDE.md: "Configure CORS per allowed origin, never `*`").
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
+
+# --------------------------------------------------------------------------
 # LLM field extraction (Ollama, image ollama/ollama:latest, local — no
 # secrets leave the machine)
 # --------------------------------------------------------------------------

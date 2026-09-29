@@ -10,14 +10,24 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from config.settings import CORS_ALLOWED_ORIGINS
 from src.freep_pipeline.api.routes import auth, exports, health, jobs, scans
 from src.freep_pipeline.api.services.auth_service import InvalidCredentialsError
 from src.freep_pipeline.api.services.job_service import JobNotFoundError
 from src.freep_pipeline.api.services.scan_service import ScanNotFoundError
 
 app = FastAPI(title="Freep ICT Job Pipeline API", version="1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 app.include_router(auth.router)
 app.include_router(jobs.router)
