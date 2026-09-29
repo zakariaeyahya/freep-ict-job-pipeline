@@ -21,6 +21,7 @@ src/freep_pipeline/
   tracking/                derive change_type across scans
   storage/                 PostgreSQL models + repository
   contracts/               JobRecord mapper + JSON Schema validator (AC12/AC14)
+  extraction/              LLM-assisted profile/engagement/procedure extraction (Groq/Ollama)
   api/                     FastAPI app: /api/v1 routes, services, JWT auth
   models/                  Pydantic domain models
   pipeline.py              orchestrates one full scan run
@@ -49,6 +50,38 @@ Create the venv, install `requirements.txt`, copy `.env.example` to
 Every job/scan response is schema-validated (AC12) before it leaves the
 API. `convergence_rounds` on a `ScanRun` is always `[]` — convergence
 rounds are not modeled yet (only one known source route today).
+
+## LLM-assisted extraction (profile/engagement/procedure)
+
+Freep exposes education/experience/skills/screening/zzp_allowed/etc. only
+as prose mixed into the eisen/wensen lists, not as separate HTML fields —
+`LlmFieldExtractor` (`src/freep_pipeline/extraction/`) classifies these
+from the source text. Every value it returns is verified to be an exact
+substring of the source before being trusted (never a paraphrase or
+invention — see the module's docstring for the anti-fabrication guarantee).
+`contract_type` ("detachering"/"freelance") is extracted separately by
+`JobParser` from a real HTML badge and always takes priority over the
+LLM's guess when present.
+
+`FallbackLlmClient` tries Groq first (fast, needs `GROQ_API_KEY`), falling
+back to a local Ollama container if Groq is unavailable:
+
+```bash
+docker run -d --name freep-ollama -p 11434:11434 -v ollama_data:/root/.ollama ollama/ollama:latest
+docker exec freep-ollama ollama pull qwen2.5:7b-instruct
+```
+
+Set `GROQ_API_KEY` / `GROQ_MODEL` and `OLLAMA_BASE_URL` / `OLLAMA_MODEL` in
+`.env` (see `.env.example`). Extraction is best-effort: if both providers
+are unavailable, the scan continues and these fields are simply left
+empty for that job — never blocks a scan.
+
+Manual one-job sanity check against a real sample (never run against the
+full dataset — costs time/quota):
+
+```bash
+python scripts/test_llm_extraction.py --provider fallback  # or groq / ollama
+```
 
 ## Auth (Keycloak)
 
