@@ -34,11 +34,27 @@ tests/                     pytest tests
 Create the venv, install `requirements.txt`, copy `.env.example` to
 `.env`, start PostgreSQL, run `pytest`, then `scripts/scrape.py`.
 
+## API surface
+
+| Endpoint | Description |
+| --- | --- |
+| `GET /api/v1/jobs` | Paginated job list, filterable by `status`/`change_type` |
+| `GET /api/v1/jobs/{internal_job_id}` | One job's current published record |
+| `GET /api/v1/jobs/{internal_job_id}/versions` | Past observations of one job (excludes the current state) |
+| `GET /api/v1/scans` | Paginated scan run list, most recent first |
+| `GET /api/v1/scans/{scan_id}` | One scan run's full report |
+| `GET /api/v1/exports/{scan_id}.jsonl` | One schema-validated `JobRecord` per line, UTF-8, for every job observed during that scan |
+| `GET /api/v1/health` | Liveness + freshness of the last published scan (unauthenticated) |
+
+Every job/scan response is schema-validated (AC12) before it leaves the
+API. `convergence_rounds` on a `ScanRun` is always `[]` — convergence
+rounds are not modeled yet (only one known source route today).
+
 ## Auth (Keycloak)
 
 The API (`src/freep_pipeline/api/`) verifies a Keycloak-issued JWT
-(signature, expiration, issuer, audience) on every job endpoint —
-`GET /api/v1/health` is the only unauthenticated route.
+(signature, expiration, issuer, audience) on every job/scan/export
+endpoint — `GET /api/v1/health` is the only unauthenticated route.
 
 1. Start Keycloak:
 

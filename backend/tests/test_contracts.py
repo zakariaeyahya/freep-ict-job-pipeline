@@ -25,6 +25,7 @@ from pathlib import Path
 import pytest
 
 from src.freep_pipeline.contracts.job_record_mapper import JobRecordMapper
+from src.freep_pipeline.contracts.scan_run_mapper import ScanRunMapper
 from src.freep_pipeline.contracts.schema_validator import job_record_validator, scan_run_validator
 
 FIXTURES_DIR = Path(__file__).resolve().parents[1] / "contracts" / "fixtures"
@@ -141,3 +142,71 @@ def test_schema_rejects_scan_with_invalid_status() -> None:
 
     result = scan_run_validator().validate(report)
     assert not result.is_valid
+
+
+class _FakeRoute:
+    def __init__(self, **overrides) -> None:
+        defaults = dict(url="https://www.freep.nl/opdrachten", pages_visited=3, result="success", error=None)
+        defaults.update(overrides)
+        for key, value in defaults.items():
+            setattr(self, key, value)
+
+
+class _FakeScanError:
+    def __init__(self, **overrides) -> None:
+        defaults = dict(reference="freep-1", reason="HTTP 500", retry_count=1, recovery_status="recovered")
+        defaults.update(overrides)
+        for key, value in defaults.items():
+            setattr(self, key, value)
+
+
+class _FakeScanRun:
+    """Stand-in for storage.scan_models.ScanRun with the fields
+    ScanRunMapper reads, avoiding a DB round-trip for this contract test."""
+
+    def __init__(self, **overrides) -> None:
+        defaults = dict(
+            scan_id="scan_20260927_1000",
+            started_at=datetime(2026, 9, 27, 10, 0, tzinfo=timezone.utc),
+            ended_at=datetime(2026, 9, 27, 10, 12, tzinfo=timezone.utc),
+            config="freep-ict-daily-v3",
+            dedup_rule="unique by Freep job slug",
+            scan_status="COMPLETE_WITHIN_SCAN_WINDOW",
+            published=True,
+            published_reason=None,
+            count_discovered=10,
+            count_processed=10,
+            count_duplicates=0,
+            count_new=3,
+            count_changed=2,
+            count_closed=1,
+            count_temporarily_not_found=0,
+            count_errors=1,
+            routes=[_FakeRoute()],
+            errors=[_FakeScanError()],
+        )
+        defaults.update(overrides)
+        for key, value in defaults.items():
+            setattr(self, key, value)
+
+
+def test_scan_mapper_output_validates_against_schema() -> None:
+    scan = _FakeScanRun()
+    report = ScanRunMapper().to_scan_run(scan)
+
+    result = scan_run_validator().validate(report)
+    assert result.is_valid, f"scan mapper output failed schema validation: {result.errors}"
+    assert report["convergence_rounds"] == []
+
+
+def test_scan_mapper_output_for_unpublished_scan_validates_against_schema() -> None:
+    scan = _FakeScanRun(
+        scan_status="INCOMPLETE",
+        published=False,
+        published_reason="scan_status was INCOMPLETE, not COMPLETE_WITHIN_SCAN_WINDOW",
+    )
+    report = ScanRunMapper().to_scan_run(scan)
+
+    result = scan_run_validator().validate(report)
+    assert result.is_valid, f"scan mapper output failed schema validation: {result.errors}"
+    assert report["published"] == {"value": False, "reason": "scan_status was INCOMPLETE, not COMPLETE_WITHIN_SCAN_WINDOW"}
