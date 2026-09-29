@@ -4,6 +4,7 @@
 
 import { apiFetch } from "@/api/client";
 import type { ScanRun } from "@/lib/contracts/scan";
+import type { ScanProgress } from "@/lib/contracts/scan-progress";
 
 type ScanListResponse = {
   items: ScanRun[];
@@ -32,9 +33,16 @@ export async function fetchLatestScan(): Promise<ScanRun | null> {
 
 // POST /api/v1/scans/trigger — starts a scan on the backend's side and
 // returns immediately (202); the scan itself can take minutes. Callers
-// poll fetchLatestScan()/fetchScans() to see it appear once finished.
-// Throws ApiError with status 409 (via apiFetch) if a scan is already
-// running.
+// poll fetchScanProgress()/fetchLatestScan() to follow it and see it
+// appear once finished. Throws ApiError with status 409 (via apiFetch) if
+// a scan is already running.
 export async function triggerScan(): Promise<void> {
   await apiFetch<{ status: string }>("/api/v1/scans/trigger", { method: "POST" });
+}
+
+// GET /api/v1/scans/current — null when no scan is running (backend
+// returns 204, which apiFetch turns into null). Poll this while a scan is
+// in progress to drive the live "scan in progress" view.
+export async function fetchScanProgress(): Promise<ScanProgress | null> {
+  return apiFetch<ScanProgress | null>("/api/v1/scans/current");
 }

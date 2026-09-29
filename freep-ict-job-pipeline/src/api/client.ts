@@ -64,5 +64,11 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     );
   }
 
+  if (response.status === 204) {
+    // No body to parse (e.g. GET /scans/current when idle) — callers
+    // expecting this must type T as including null/undefined.
+    return null as T;
+  }
+
   return (await response.json()) as T;
 }
