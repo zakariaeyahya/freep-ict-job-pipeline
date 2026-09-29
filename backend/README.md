@@ -37,6 +37,67 @@ tests/                     pytest tests
 Create the venv, install `requirements.txt`, copy `.env.example` to
 `.env`, start PostgreSQL, run `pytest`, then `scripts/scrape.py`.
 
+## Run the full stack with Docker
+
+From the repository root, copy `.env.example` to `.env`, replace the
+passwords/secrets, then build and start the containers:
+
+```bash
+docker compose up --build
+```
+
+The frontend is at http://localhost:3000, the API at
+http://localhost:8000, and the Keycloak admin console at
+http://localhost:8080. PostgreSQL and Keycloak data persist in Docker
+volumes. Configure the `dreev` realm and its clients/users using the
+Auth (Keycloak) steps below; the API uses
+`http://keycloak:8080/realms/dreev` as the issuer inside the Compose
+network. Set `KEYCLOAK_REVIEWER_CLIENT_SECRET` in the root `.env` to the
+review UI client's actual secret before signing in.
+
+Stop the containers with `docker compose down`; add `-v` only when you
+intentionally want to delete the persisted database and Keycloak data.
+
+### Publish the application images to Docker Hub
+
+Set `DOCKERHUB_USERNAME` and `IMAGE_TAG` in the root `.env`, then log in
+and publish only the two application images (not PostgreSQL or Keycloak):
+
+```bash
+docker login
+docker compose build backend frontend
+docker compose push backend frontend
+```
+
+On another machine, pull and start them with the same Compose file and a
+configured `.env`:
+
+```bash
+docker compose pull backend frontend
+docker compose up -d
+```
+
+For deployment on a different domain, set `NEXT_PUBLIC_API_BASE_URL` to
+the public API URL before building the frontend image and rebuild it;
+this value is embedded in the browser bundle at build time.
+
+### Build and publish Ollama with its model
+
+The optional Ollama image downloads `qwen2.5:7b-instruct` during its
+build, so the model is included in the image pushed to Docker Hub. This
+makes the image several gigabytes larger and requires downloading the
+model again whenever that image is rebuilt.
+
+```bash
+docker compose --profile llm build ollama
+docker compose --profile llm push ollama
+docker compose --profile llm up -d
+```
+
+The backend reaches Ollama at `http://ollama:11434` on the Compose
+network. Change `OLLAMA_MODEL` in the root `.env` before building to
+include a different model.
+
 ## API surface
 
 | Endpoint | Description |

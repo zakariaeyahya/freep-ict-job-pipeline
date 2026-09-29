@@ -1,0 +1,85 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-freep_pipeline}
+      POSTGRES_USER: ${POSTGRES_USER:-freep}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-freep-local}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: start-dev --http-enabled=true
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-change-this-local-password}
+    ports:
+      - "8080:8080"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    restart: unless-stopped
+
+  backend:
+    image: ${DOCKERHUB_USERNAME:-your-dockerhub-username}/freep-ict-backend:${IMAGE_TAG:-latest}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-freep}:${POSTGRES_PASSWORD:-freep-local}@db:5432/${POSTGRES_DB:-freep_pipeline}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      KEYCLOAK_ISSUER_URL: http://keycloak:8080/realms/dreev
+      KEYCLOAK_API_AUDIENCE: ${KEYCLOAK_API_AUDIENCE:-freep-pipeline-api}
+      KEYCLOAK_REVIEWER_CLIENT_ID: ${KEYCLOAK_REVIEWER_CLIENT_ID:-freep-reviewer-ui}
+      KEYCLOAK_REVIEWER_CLIENT_SECRET: ${KEYCLOAK_REVIEWER_CLIENT_SECRET:-changeme}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b-instruct}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    volumes:
+      - backend_logs:/app/logs
+    restart: unless-stopped
+
+  frontend:
+    image: ${DOCKERHUB_USERNAME:-your-dockerhub-username}/freep-ict-frontend:${IMAGE_TAG:-latest}
+    build:
+      context: ./freep-ict-job-pipeline
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  ollama:
+    image: ${DOCKERHUB_USERNAME:-your-dockerhub-username}/freep-ict-ollama:${IMAGE_TAG:-latest}
+    build:
+      context: ./docker/ollama
+      dockerfile: Dockerfile
+      args:
+        OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b-instruct}
+    profiles: ["llm"]
+    ports:
+      - "127.0.0.1:11434:11434"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  keycloak_data:
+  backend_logs:
