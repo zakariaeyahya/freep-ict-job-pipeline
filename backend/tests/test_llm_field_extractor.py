@@ -1,17 +1,16 @@
 """LlmFieldExtractor's core guarantee: the never-fabricate-content rule
 (CLAUDE.md) must hold even when the LLM itself misbehaves — every returned
 value is checked to be an exact substring of the source text before being
-trusted. Never make a real network call to Ollama here: OllamaClient is
-replaced with a fake so these tests are fast, deterministic, and don't
-depend on a local model being pulled.
+trusted. Never make a real network call here: the LLM client is replaced
+with a fake so these tests are fast and deterministic.
 """
 
 from __future__ import annotations
 
 import pytest
 
+from src.freep_pipeline.extraction.groq_client import GroqUnavailableError
 from src.freep_pipeline.extraction.llm_field_extractor import ExtractedFields, LlmFieldExtractor
-from src.freep_pipeline.extraction.ollama_client import OllamaUnavailableError
 
 _PROMPT_SPEC = {
     "system_prompt": "irrelevant for these tests — the fake client ignores it",
@@ -22,7 +21,7 @@ _PROMPT_SPEC = {
 }
 
 
-class _FakeOllamaClient:
+class _FakeLlmClient:
     def __init__(self, response: dict | None = None, raises: Exception | None = None) -> None:
         self._response = response or {}
         self._raises = raises
@@ -36,7 +35,7 @@ class _FakeOllamaClient:
 
 
 def _extractor(response: dict | None = None, raises: Exception | None = None) -> LlmFieldExtractor:
-    client = _FakeOllamaClient(response=response, raises=raises)
+    client = _FakeLlmClient(response=response, raises=raises)
     return LlmFieldExtractor(client=client, prompt_spec=_PROMPT_SPEC)
 
 
@@ -97,10 +96,10 @@ def test_wrong_types_from_the_model_are_ignored_not_coerced() -> None:
     assert result.skills == []
 
 
-def test_unavailable_ollama_returns_empty_fields_instead_of_raising() -> None:
+def test_unavailable_llm_returns_empty_fields_instead_of_raising() -> None:
     """Extraction is best-effort enrichment, not a required pipeline step
     — a down/misconfigured LLM must never block scanning or publishing."""
-    extractor = _extractor(raises=OllamaUnavailableError("connection refused"))
+    extractor = _extractor(raises=GroqUnavailableError("connection refused"))
 
     result = extractor.extract(title="Dev", hard_requirements=["Python ervaring"], wishes=[])
 
@@ -108,7 +107,7 @@ def test_unavailable_ollama_returns_empty_fields_instead_of_raising() -> None:
 
 
 def test_empty_source_text_skips_the_llm_call_entirely() -> None:
-    client = _FakeOllamaClient(response={"skills": ["should never be seen"]})
+    client = _FakeLlmClient(response={"skills": ["should never be seen"]})
     extractor = LlmFieldExtractor(client=client, prompt_spec=_PROMPT_SPEC)
 
     result = extractor.extract(title="", hard_requirements=[], wishes=[])
