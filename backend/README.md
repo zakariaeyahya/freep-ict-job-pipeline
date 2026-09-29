@@ -111,17 +111,58 @@ endpoint — `GET /api/v1/health` is the only unauthenticated route.
    for the test client.
 6. Create a client `freep-reviewer-ui` (confidential) for
    `POST /api/v1/auth/login` (the review UI's human login):
-   - Enable **Direct Access Grants** (Settings → Capability config) — this
-     is what allows the ROPC grant (`grant_type=password`) the login
-     endpoint uses.
-   - Leave Standard Flow / Implicit Flow off; the UI never redirects to
-     Keycloak directly, only the backend talks to it.
-   - Set `KEYCLOAK_REVIEWER_CLIENT_ID` / `KEYCLOAK_REVIEWER_CLIENT_SECRET`
-     in `.env`.
-7. Create at least one real user in the `dreev` realm (Users → Add user,
-   then Credentials tab to set a password, "Temporary" off) for reviewers
-   to log in with — this replaces the frontend's old hardcoded demo
-   account (`src/lib/auth/session.ts` in the frontend repo).
+   - Client authentication: **ON**.
+   - Authentication flow: enable only **Direct Access Grants** (this is
+     what allows the ROPC grant, `grant_type=password`, the login endpoint
+     uses) — leave Standard Flow / Implicit Flow / Service accounts off;
+     the UI never redirects to Keycloak directly, only the backend talks
+     to it.
+   - Add an audience mapper so its tokens actually work against this API:
+     Client scopes → `freep-reviewer-ui-dedicated` → Add mapper → By
+     configuration → **Audience** → Included Client Audience =
+     `freep-pipeline-api`, Add to access token = On. Without this, tokens
+     from this client carry `aud: "account"` (Keycloak's default) and
+     every protected endpoint rejects them with 401 — this bit us during
+     setup and is easy to miss.
+   - Copy the **Client secret** (Credentials tab) into
+     `KEYCLOAK_REVIEWER_CLIENT_ID` / `KEYCLOAK_REVIEWER_CLIENT_SECRET` in
+     `.env`.
+7. Create at least one real user in the `dreev` realm (Users → Add user)
+   for reviewers to log in with — this replaces the frontend's old
+   hardcoded demo account (`src/lib/auth/session.ts`, removed from the
+   frontend repo). Keycloak's ROPC grant fails with
+   `invalid_grant: "Account is not fully set up"` unless the user is
+   fully complete, so when creating the user set **all** of:
+   - **Email**, and toggle **Email verified** to On.
+   - **First name** and **Last name** — Keycloak (recent versions) treats
+     these as required for the account to count as "set up", even though
+     neither the create-user form nor any validation error says so; a
+     user missing either one fails ROPC with the same opaque error as a
+     wrong password, which cost real debugging time here.
+   - Then Credentials tab → Set password → **Temporary: Off**.
+   - Check Details tab → **Required user actions** is empty (no leftover
+     "Update Password"/"Verify Email").
+
+   Quick way to verify a user/client pair works before wiring up the UI:
+
+   ```bash
+   curl -s -X POST http://localhost:8080/realms/dreev/protocol/openid-connect/token \
+     -d grant_type=password -d client_id=freep-reviewer-ui \
+     -d client_secret=<secret> -d username=<user> -d password=<pass> -d scope=openid
+   ```
+
+   A real `access_token` in the response means Keycloak is fully set up;
+   an `invalid_grant`/`invalid_client` error means the client/user, not
+   the API code, needs fixing.
+
+## CORS
+
+The review UI runs on a different origin (`http://localhost:3000` by
+default) than this API (`http://localhost:8000`), so the browser sends a
+CORS preflight (`OPTIONS`) before every cross-origin request — including
+login. `CORS_ALLOWED_ORIGINS` in `.env` (comma-separated, never `*` per
+CLAUDE.md) controls which origins are allowed; update it if the frontend
+is served from somewhere else.
 
 ## Running the API
 
