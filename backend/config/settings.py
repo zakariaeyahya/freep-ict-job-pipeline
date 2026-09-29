@@ -40,6 +40,16 @@ HTTP_USER_AGENT = (
 HTTP_TIMEOUT_SECONDS = 30
 HTTP_REQUEST_DELAY_SECONDS = 0.5
 
+# Freep's homepage response intermittently omits the ICT filter count label
+# (observed: same URL, same headers, HTTP 200, full job list present, but
+# the label text missing from that particular response) even though a
+# request moments later has it. Re-fetching the homepage — not re-parsing
+# the same HTML — resolves it in practice, so the coverage check retries a
+# fresh request this many times before giving up (brief §3.3: a local/
+# transient problem must not unnecessarily block the entire run).
+HOMEPAGE_COVERAGE_RETRY_ATTEMPTS = 3
+HOMEPAGE_COVERAGE_RETRY_DELAY_SECONDS = 2
+
 BROWSER_HEADLESS = True
 BROWSER_PAGE_TIMEOUT_MS = 30_000
 

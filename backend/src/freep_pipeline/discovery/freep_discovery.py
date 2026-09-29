@@ -12,12 +12,15 @@ from __future__ import annotations
 
 import json
 import re
+import time
 
 import requests
 
 from config.logging_config import get_logger
 from config.settings import (
     FREEP_START_URL,
+    HOMEPAGE_COVERAGE_RETRY_ATTEMPTS,
+    HOMEPAGE_COVERAGE_RETRY_DELAY_SECONDS,
     HTTP_TIMEOUT_SECONDS,
     HTTP_USER_AGENT,
     ICT_FILTER_LABEL,
@@ -67,6 +70,8 @@ class FreepDiscovery:
         ]
 
         displayed_count = self._coverage_checker.extract_displayed_count(html)
+        if displayed_count is None:
+            displayed_count = self._retry_for_displayed_count()
         coverage_confirmed = self._coverage_checker.check_coverage(
             displayed_count=displayed_count, discovered_count=len(links)
         )
@@ -79,6 +84,24 @@ class FreepDiscovery:
             coverage_confirmed,
         )
         return DiscoveryResult(links=links, coverage_confirmed=coverage_confirmed, displayed_count=displayed_count)
+
+    def _retry_for_displayed_count(self) -> int | None:
+        """Re-fetches the homepage (a fresh request, not a re-parse of the
+        same HTML) a few times when the coverage label is missing from a
+        response — observed to be a transient Freep rendering issue, not a
+        parsing bug (see settings.HOMEPAGE_COVERAGE_RETRY_ATTEMPTS)."""
+        for attempt in range(1, HOMEPAGE_COVERAGE_RETRY_ATTEMPTS + 1):
+            time.sleep(HOMEPAGE_COVERAGE_RETRY_DELAY_SECONDS)
+            logger.info(
+                "ICT filter label missing, retrying homepage fetch for coverage count (attempt %d/%d)",
+                attempt,
+                HOMEPAGE_COVERAGE_RETRY_ATTEMPTS,
+            )
+            retry_html = self._fetch_homepage_html()
+            displayed_count = self._coverage_checker.extract_displayed_count(retry_html)
+            if displayed_count is not None:
+                return displayed_count
+        return None
 
     def _fetch_homepage_html(self) -> str:
         response = requests.get(
