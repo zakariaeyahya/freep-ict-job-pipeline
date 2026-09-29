@@ -1,6 +1,6 @@
 """Extracts profile/engagement/procedure signals (brief §4.2) from a job's
-free-text requirements/wishes/description via an LLM (Groq primary, local
-Ollama fallback — see FallbackLlmClient).
+free-text requirements/wishes/description via an LLM (OpenAI primary, Groq
+fallback — see FallbackLlmClient).
 
 Why an LLM here and not more regex/BeautifulSoup: Freep's detail pages do
 not expose these as separate HTML fields — "Geen ZZP", "afgeronde HBO
@@ -26,7 +26,7 @@ import yaml
 
 from config.logging_config import get_logger
 from src.freep_pipeline.extraction.fallback_llm_client import FallbackLlmClient
-from src.freep_pipeline.extraction.ollama_client import OllamaUnavailableError
+from src.freep_pipeline.extraction.groq_client import GroqUnavailableError
 
 logger = get_logger(__name__)
 
@@ -55,8 +55,8 @@ class ExtractedFields:
 
 
 class LlmFieldExtractor:
-    """Wraps the LLM client (FallbackLlmClient by default: Groq primary,
-    Ollama fallback) with the prompt and the anti-fabrication verification
+    """Wraps the LLM client (FallbackLlmClient by default: OpenAI primary,
+    Groq fallback) with the prompt and the anti-fabrication verification
     pass. Never raises on a down/misbehaving LLM — extraction is a
     best-effort enrichment, not a required step; a job is stored and
     published with these groups empty rather than blocked (brief's
@@ -78,10 +78,9 @@ class LlmFieldExtractor:
 
         try:
             raw = self._client.generate_json(self._system_prompt, source_text)
-        except OllamaUnavailableError as exc:
-            # FallbackLlmClient only raises this after BOTH Groq and
-            # Ollama have failed — the name is Ollama's for historical
-            # reasons but it's the client-agnostic "give up" signal here.
+        except GroqUnavailableError as exc:
+            # FallbackLlmClient only raises this after BOTH OpenAI and Groq
+            # have failed — the client-agnostic "give up" signal here.
             logger.warning("LLM field extraction skipped (no provider available): %s", exc)
             return ExtractedFields()
 

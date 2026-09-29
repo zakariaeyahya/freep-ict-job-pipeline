@@ -117,30 +117,26 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # --------------------------------------------------------------------------
-# LLM field extraction (Ollama, image ollama/ollama:latest, local — no
-# secrets leave the machine)
+# LLM field extraction (OpenAI primary, Groq fallback)
 # --------------------------------------------------------------------------
 
 # Extracts profile/engagement/procedure signals (brief §4.2) from free-text
 # requirements/wishes/description that the HTML parser cannot reliably
 # split into structured fields (e.g. "Geen ZZP", "afgeronde HBO opleiding"
-# are prose, not separate HTML elements). Runs locally, never sends job
-# text to a third-party API.
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b-instruct")
-# CPU-only inference (no GPU detected) makes a 7B model's response time
-# highly variable (~100s observed for even a short prompt on this
-# machine). No timeout is applied (see OllamaClient) — set this only if
-# you later want to reintroduce a cutoff.
-OLLAMA_TIMEOUT_SECONDS = None
+# are prose, not separate HTML elements).
+
+# OPENAI_API_KEY is a real secret — env var only, never committed, never
+# logged.
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_TIMEOUT_SECONDS = 60
 
 # --------------------------------------------------------------------------
-# Groq (temporary stand-in for Ollama while a local model is being pulled)
+# Groq (fallback when OpenAI is unavailable)
 # --------------------------------------------------------------------------
 
 # GROQ_API_KEY is a real secret — env var only, never committed, never
-# logged. This provider is meant to be swapped back to Ollama once a local
-# model is available (see extraction/groq_client.py's docstring).
+# logged.
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 GROQ_TIMEOUT_SECONDS = 60

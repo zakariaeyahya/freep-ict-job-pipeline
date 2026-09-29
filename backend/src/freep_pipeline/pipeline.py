@@ -252,8 +252,8 @@ class ScanPipeline:
         is byte-for-byte identical to the last scan's — re-running
         extraction on unchanged text would always produce the same
         grounded result anyway (temperature=0), so it's pure wasted time
-        (Groq latency, or Ollama's ~100s cold start). Reuses the previous
-        observation's LLM-derived fields instead of leaving them empty."""
+        (OpenAI/Groq latency). Reuses the previous observation's
+        LLM-derived fields instead of leaving them empty."""
         source_hash = self._compute_source_hash(job)
         existing = self._repository.get_current_job(job.source_job_id)
 
