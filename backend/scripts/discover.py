@@ -6,7 +6,6 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
 import sys
 from pathlib import Path
 
@@ -18,13 +17,13 @@ from src.freep_pipeline.discovery.freep_discovery import FreepDiscovery
 logger = get_logger(__name__)
 
 
-async def main() -> None:
+def main() -> None:
     discovery = FreepDiscovery()
-    links = await discovery.discover_job_links()
-    logger.info("Discovered %d unique ICT job links", len(links))
-    for link in links:
+    result = discovery.discover_job_links()
+    logger.info("Discovered %d unique ICT job links", len(result.links))
+    for link in result.links:
         logger.info("  %s", link.source_url)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

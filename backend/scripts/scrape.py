@@ -7,7 +7,6 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
 import sys
 from pathlib import Path
 
@@ -19,11 +18,11 @@ from src.freep_pipeline.pipeline import ScanPipeline
 logger = get_logger(__name__)
 
 
-async def main() -> None:
+def main() -> None:
     pipeline = ScanPipeline()
-    scan_id = await pipeline.run()
+    scan_id = pipeline.run()
     logger.info("Scan complete: %s", scan_id)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
