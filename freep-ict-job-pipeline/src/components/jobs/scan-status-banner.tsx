@@ -1,21 +1,12 @@
+import type { ScanRun } from "@/lib/contracts/scan";
+import { INCOMPLETE_SCAN_WARNING } from "@/lib/contracts/scan";
 import { formatDateTime } from "@/lib/format";
 
 // Mirrors the mandatory scan banner from CLAUDE.md "Status vocabulary" and
-// §6.2 of the brief. Backed by mock data until /scans exists.
-const MOCK_SCAN = {
-  scan_status: "COMPLETE_WITHIN_SCAN_WINDOW" as const,
-  ended_at: "2025-09-28T17:14:00+02:00",
-  routes_total: 8,
-  routes_completed: 8,
-  jobs_processed: 13,
-  jobs_discovered: 13,
-};
-
-const INCOMPLETE_WARNING =
-  "FREEP SCAN INCOMPLETE. Not all known ICT source routes, discovered assignments or convergence checks could be processed reliably within the scan window. The scan report states what was observed and what could not be verified.";
-
-export function ScanStatusBanner() {
-  const isComplete = MOCK_SCAN.scan_status === "COMPLETE_WITHIN_SCAN_WINDOW";
+// §6.2 of the brief.
+export function ScanStatusBanner({ scan }: { scan: ScanRun }) {
+  const isComplete = scan.scan_status === "COMPLETE_WITHIN_SCAN_WINDOW";
+  const routesCompleted = scan.routes.filter((route) => route.result === "success").length;
 
   return (
     <div
@@ -41,11 +32,11 @@ export function ScanStatusBanner() {
           {isComplete ? "Scan completed within window" : "Scan incomplete"}
         </p>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Last scan: {formatDateTime(MOCK_SCAN.ended_at)} · {MOCK_SCAN.routes_completed}/{MOCK_SCAN.routes_total}{" "}
-          routes · {MOCK_SCAN.jobs_processed}/{MOCK_SCAN.jobs_discovered} jobs
+          Last scan: {formatDateTime(scan.ended_at)} · {routesCompleted}/{scan.routes.length} routes ·{" "}
+          {scan.counts.processed}/{scan.counts.discovered} jobs
         </p>
         {!isComplete ? (
-          <p className="mt-1 font-medium text-amber-800 dark:text-amber-300">{INCOMPLETE_WARNING}</p>
+          <p className="mt-1 font-medium text-amber-800 dark:text-amber-300">{INCOMPLETE_SCAN_WARNING}</p>
         ) : null}
       </div>
     </div>

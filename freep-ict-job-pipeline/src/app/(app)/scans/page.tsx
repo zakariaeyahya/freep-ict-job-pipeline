@@ -1,4 +1,10 @@
-import { getLatestScan } from "@/lib/mock/scans";
+"use client";
+
+import { useState } from "react";
+
+import { fetchLatestScan } from "@/api/scans";
+import { downloadScanExport } from "@/api/exports";
+import { useApiResource } from "@/lib/use-api-resource";
 import { ScanStatusBadge } from "@/components/scans/scan-status-badge";
 import { ScanConfigCard } from "@/components/scans/scan-config-card";
 import { ConvergenceRounds } from "@/components/scans/convergence-rounds";
@@ -7,10 +13,39 @@ import { RoutesTable } from "@/components/scans/routes-table";
 import { ErrorsList } from "@/components/scans/errors-list";
 import { IncompleteWarningBanner } from "@/components/scans/incomplete-warning-banner";
 import { SectionHeader } from "@/components/layout/section-header";
+import { LoadingState, ErrorState } from "@/components/layout/async-state";
 import { BarChartIcon, DownloadIcon, MoreIcon } from "@/components/icons";
 
 export default function ScanReportPage() {
-  const scan = getLatestScan();
+  const scanState = useApiResource(() => fetchLatestScan(), []);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  async function handleDownload(scanId: string) {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      await downloadScanExport(scanId);
+    } catch {
+      setDownloadError("We couldn't download the export. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  if (scanState.status === "loading") return <LoadingState label="Loading latest scan…" />;
+  if (scanState.status === "error") {
+    return <ErrorState message={scanState.error} onRetry={scanState.refetch} />;
+  }
+
+  const scan = scanState.data;
+  if (!scan) {
+    return (
+      <div className="rounded-2xl border border-[#E5EAF2] bg-white px-4 py-16 text-center text-sm text-[#64748B] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+        No scan has been recorded yet.
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -25,25 +60,32 @@ export default function ScanReportPage() {
           <p className="mt-1 text-sm text-[#64748B] dark:text-zinc-400">Scan ID: {scan.scan_id}</p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled
-            title="Export is not available yet — no backend export service is connected."
-            className="flex items-center gap-2 rounded-xl border border-[#E5EAF2] bg-white px-3.5 py-2 text-sm font-medium text-[#102A5C] outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-          >
-            <DownloadIcon />
-            Download report
-          </button>
-          <button
-            type="button"
-            disabled
-            aria-label="More actions"
-            title="No further actions are available yet."
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5EAF2] bg-white text-[#64748B] outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
-          >
-            <MoreIcon />
-          </button>
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleDownload(scan.scan_id)}
+              disabled={downloading}
+              className="flex items-center gap-2 rounded-xl border border-[#E5EAF2] bg-white px-3.5 py-2 text-sm font-medium text-[#102A5C] outline-none hover:bg-[#F8FAFF] focus-visible:ring-2 focus-visible:ring-violet-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+            >
+              <DownloadIcon />
+              {downloading ? "Downloading…" : "Download report"}
+            </button>
+            <button
+              type="button"
+              disabled
+              aria-label="More actions"
+              title="No further actions are available yet."
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5EAF2] bg-white text-[#64748B] outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
+            >
+              <MoreIcon />
+            </button>
+          </div>
+          {downloadError ? (
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+              {downloadError}
+            </p>
+          ) : null}
         </div>
       </div>
 

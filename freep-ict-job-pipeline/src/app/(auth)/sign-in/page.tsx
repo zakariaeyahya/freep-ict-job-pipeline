@@ -5,24 +5,25 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
-import { signIn } from "@/lib/auth/session";
+import { useAuthStore } from "@/store/auth-store";
 
 export default function SignInPage() {
   const router = useRouter();
+  const login = useAuthStore((state) => state.login);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
 
     setSubmitting(true);
     setError(null);
 
-    const result = signIn(email, password);
+    const result = await login(email, password);
 
     if (!result.ok) {
       setError(result.error);
@@ -133,7 +134,7 @@ export default function SignInPage() {
           </form>
 
           <p className="mt-6 text-center text-xs text-zinc-400 dark:text-zinc-500">
-            Front-only demo access. No account data leaves this browser.
+            Sign in with your Dreev reviewer account.
           </p>
         </div>
       </div>

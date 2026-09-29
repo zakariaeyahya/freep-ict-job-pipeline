@@ -1,51 +1,18 @@
 "use client";
 
-import { useState } from "react";
 import type { EvidencedText } from "@/lib/contracts/job";
-import { getEvidence } from "@/lib/mock/evidence";
 
+// The backend does not yet populate evidence_ref (see CLAUDE.md "Not done
+// yet": "evidence_ref links... not populated"), so this only ever renders
+// the "No evidence reference" fallback today. Kept ready for when the
+// backend adds a real GET /jobs/{id}/evidence/{evidence_ref} endpoint —
+// at that point this shows a fetched excerpt instead of just the ref.
 function EvidenceLink({ evidenceRef }: { evidenceRef: string | null }) {
-  const [open, setOpen] = useState(false);
-
   if (!evidenceRef) {
     return <span className="text-xs text-zinc-400 dark:text-zinc-500">No evidence reference</span>;
   }
 
-  const evidence = getEvidence(evidenceRef);
-
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="text-xs font-medium text-violet-700 underline-offset-2 outline-none hover:underline focus-visible:underline dark:text-violet-300"
-      >
-        {open ? "Hide evidence" : "View evidence"} ({evidenceRef})
-      </button>
-      {open ? (
-        <div className="mt-1.5 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-800/50">
-          {evidence ? (
-            <>
-              <p className="font-mono text-zinc-700 dark:text-zinc-300">&ldquo;{evidence.excerpt}&rdquo;</p>
-              <a
-                href={evidence.source_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1.5 inline-block text-violet-700 underline-offset-2 hover:underline dark:text-violet-300"
-              >
-                Open source
-              </a>
-            </>
-          ) : (
-            <p className="text-zinc-500 dark:text-zinc-400">
-              No source excerpt available yet for this reference.
-            </p>
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
+  return <span className="text-xs text-zinc-500 dark:text-zinc-400">Evidence ref: {evidenceRef}</span>;
 }
 
 export function EvidencedList({ title, items }: { title: string; items: EvidencedText[] }) {

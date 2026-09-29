@@ -1,8 +1,10 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
+"use client";
 
-import { getJob } from "@/lib/mock/jobs";
-import { getJobVersions } from "@/lib/mock/job-versions";
+import { use } from "react";
+import Link from "next/link";
+
+import { fetchJob, fetchJobVersions } from "@/api/jobs";
+import { useApiResource } from "@/lib/use-api-resource";
 import { formatDateTime } from "@/lib/format";
 import { StatusBadge, ChangeBadge } from "@/components/jobs/status-badge";
 import { DetailField } from "@/components/jobs/detail-field";
@@ -12,21 +14,25 @@ import { QualityBlock } from "@/components/jobs/quality-block";
 import { SourceBlock } from "@/components/jobs/source-block";
 import { VersionHistory } from "@/components/jobs/version-history";
 import { SectionHeader } from "@/components/layout/section-header";
+import { LoadingState, ErrorState } from "@/components/layout/async-state";
 import { BriefcaseIcon, DatabaseIcon, FileIcon, HistoryIcon, ListIcon, ShieldCheckIcon } from "@/components/icons";
 
-export default async function JobDetailPage({
+export default function JobDetailPage({
   params,
 }: {
   params: Promise<{ internal_job_id: string }>;
 }) {
-  const { internal_job_id: internalJobId } = await params;
-  const job = getJob(internalJobId);
+  const { internal_job_id: internalJobId } = use(params);
 
-  if (!job) {
-    notFound();
+  const jobState = useApiResource(() => fetchJob(internalJobId), [internalJobId]);
+  const versionsState = useApiResource(() => fetchJobVersions(internalJobId), [internalJobId]);
+
+  if (jobState.status === "loading") return <LoadingState label="Loading job…" />;
+  if (jobState.status === "error") {
+    return <ErrorState message={jobState.error} onRetry={jobState.refetch} />;
   }
 
-  const versions = getJobVersions(job.identity.internal_job_id);
+  const job = jobState.data;
 
   return (
     <div className="flex flex-col gap-5">
@@ -132,14 +138,20 @@ export default async function JobDetailPage({
       <div className="rounded-2xl border border-[#E5EAF2] bg-[#FBFCFF] p-5 dark:border-zinc-800 dark:bg-zinc-900/60">
         <SectionHeader icon={<HistoryIcon />} title="Version history" />
         <div className="mt-4">
-          <VersionHistory
-            versions={versions}
-            currentVersion={{
-              record_version: job.version.record_version,
-              observed_at: job.version.last_seen_at,
-              content_hash: job.version.content_hash,
-            }}
-          />
+          {versionsState.status === "loading" ? <LoadingState label="Loading version history…" /> : null}
+          {versionsState.status === "error" ? (
+            <ErrorState message={versionsState.error} onRetry={versionsState.refetch} />
+          ) : null}
+          {versionsState.status === "success" ? (
+            <VersionHistory
+              versions={versionsState.data}
+              currentVersion={{
+                record_version: job.version.record_version,
+                observed_at: job.version.last_seen_at,
+                content_hash: job.version.content_hash,
+              }}
+            />
+          ) : null}
         </div>
       </div>
     </div>

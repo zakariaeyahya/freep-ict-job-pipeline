@@ -1,10 +1,16 @@
-import { getJobs } from "@/lib/mock/jobs";
+"use client";
+
+import { fetchJobs } from "@/api/jobs";
+import { fetchLatestScan } from "@/api/scans";
+import { useApiResource } from "@/lib/use-api-resource";
 import { JobsSummary } from "@/components/jobs/jobs-summary";
 import { JobsTable } from "@/components/jobs/jobs-table";
 import { ScanStatusBanner } from "@/components/jobs/scan-status-banner";
+import { LoadingState, ErrorState } from "@/components/layout/async-state";
 
 export default function JobsPage() {
-  const jobs = getJobs();
+  const jobsState = useApiResource(() => fetchJobs({ limit: 200 }), []);
+  const scanState = useApiResource(() => fetchLatestScan(), []);
 
   return (
     <div className="flex flex-col gap-6">
@@ -15,9 +21,19 @@ export default function JobsPage() {
         </p>
       </div>
 
-      <JobsSummary jobs={jobs} />
-      <ScanStatusBanner />
-      <JobsTable jobs={jobs} />
+      {jobsState.status === "loading" ? <LoadingState label="Loading jobs…" /> : null}
+      {jobsState.status === "error" ? (
+        <ErrorState message={jobsState.error} onRetry={jobsState.refetch} />
+      ) : null}
+      {jobsState.status === "success" ? (
+        <>
+          <JobsSummary jobs={jobsState.data.items} />
+          {scanState.status === "success" && scanState.data ? (
+            <ScanStatusBanner scan={scanState.data} />
+          ) : null}
+          <JobsTable jobs={jobsState.data.items} />
+        </>
+      ) : null}
     </div>
   );
 }

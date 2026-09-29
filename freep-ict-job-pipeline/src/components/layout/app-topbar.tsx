@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { getSession, signOut, type Session } from "@/lib/auth/session";
+import { useAuthStore } from "@/store/auth-store";
 
 function initialsFrom(email: string): string {
   const name = email.split("@")[0] ?? "";
@@ -14,13 +14,10 @@ function initialsFrom(email: string): string {
 
 export function AppTopbar() {
   const router = useRouter();
-  const [session, setSession] = useState<Session | null>(null);
+  const email = useAuthStore((state) => state.email);
+  const logout = useAuthStore((state) => state.logout);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setSession(getSession());
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -33,11 +30,11 @@ export function AppTopbar() {
   }, []);
 
   function handleSignOut() {
-    signOut();
+    logout();
     router.push("/sign-in");
   }
 
-  if (!session) return <header className="border-b border-zinc-200 bg-white px-4 py-3 sm:px-6 lg:px-8 dark:border-zinc-800 dark:bg-zinc-900" />;
+  if (!email) return <header className="border-b border-zinc-200 bg-white px-4 py-3 sm:px-6 lg:px-8 dark:border-zinc-800 dark:bg-zinc-900" />;
 
   return (
     <header className="flex items-center justify-end border-b border-zinc-200 bg-white px-4 py-3 sm:px-6 lg:px-8 dark:border-zinc-800 dark:bg-zinc-900">
@@ -50,9 +47,9 @@ export function AppTopbar() {
           className="flex items-center gap-2 rounded-2xl px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-violet-500/30"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-xs font-semibold text-violet-700 dark:bg-violet-500/20 dark:text-violet-300">
-            {initialsFrom(session.email)}
+            {initialsFrom(email)}
           </span>
-          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{session.email}</span>
+          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{email}</span>
         </button>
 
         {menuOpen ? (
