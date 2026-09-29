@@ -199,7 +199,11 @@ class ScanPipeline:
         job.methods = extracted.methods
         job.certifications = extracted.certifications
         job.languages = extracted.languages
-        job.contract_type = extracted.contract_type
+        # contract_type: the parser's HTML badge extraction (a real
+        # structured field, not a guess) takes priority over the LLM's
+        # text-based inference — only fall back to the LLM's finding if
+        # the parser found no badge on the page.
+        job.contract_type = job.contract_type or extracted.contract_type
         job.zzp_allowed = extracted.zzp_allowed
         job.screening = extracted.screening
         job.vog = extracted.vog

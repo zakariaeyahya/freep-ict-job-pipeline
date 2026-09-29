@@ -12,8 +12,10 @@ from freep_pipeline.parsing.job_parser import JobParser
 FIXTURE_HTML = """
 <html>
   <body>
+    <a href="/detachering" class="text-center leading-6 font-medium xl:text-lg text-indigo-600">Detachering</a>
     <h1>AI Developer</h1>
     <p>Acme Consulting</p>
+    <span class="lg:fixed lg:top-4 lg:right-4 flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap bg-pink-50 text-pink-800">detachering</span>
     <ul class="mt-8">
       <li>Utrecht</li>
       <li>&euro;80 - 100 per uur</li>
@@ -60,6 +62,7 @@ def test_parse_job_detail_extracts_expected_fields():
         "Knowledge of SQL",
     ]
     assert job.wishes == ["Experience with Power BI is a plus"]
+    assert job.contract_type == "detachering"
 
 
 def test_parse_job_detail_handles_missing_sections():
@@ -72,3 +75,25 @@ def test_parse_job_detail_handles_missing_sections():
     assert job.hard_requirements == []
     assert job.wishes == []
     assert job.description_original is None
+    assert job.contract_type is None
+
+
+def test_contract_type_badge_is_not_confused_with_the_site_navigation_link():
+    """The pill-shaped <span> badge is the per-offer contract type;
+    <a href="/detachering">Detachering</a> is unrelated site navigation
+    that happens to share the same word — only the span must be read."""
+    soup = BeautifulSoup(
+        """
+        <html><body>
+          <a href="/freelance">Freelance</a>
+          <h1>Production engineer</h1>
+          <span class="px-2.5 py-0.5 rounded-full text-xs bg-pink-50 text-pink-800">freelance</span>
+        </body></html>
+        """,
+        "html.parser",
+    )
+    parser = JobParser()
+
+    job = parser.parse(soup, URL)
+
+    assert job.contract_type == "freelance"

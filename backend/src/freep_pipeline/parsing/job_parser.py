@@ -29,6 +29,7 @@ class JobParser:
         description = self._extract_description(soup)
         requirements = self._extract_labeled_list(soup, "de eisen")
         wishes = self._extract_labeled_list(soup, "de wensen")
+        contract_type = self._extract_contract_type(soup)
 
         job = ParsedJob(
             source_job_id=self._extract_source_job_id(url),
@@ -44,6 +45,7 @@ class JobParser:
             description_original=description,
             hard_requirements=requirements,
             wishes=wishes,
+            contract_type=contract_type,
         )
 
         logger.debug("Parsed job %s: %s", job.source_job_id, job.title)
@@ -127,6 +129,15 @@ class JobParser:
             return []
 
         return self._extract_list_items(ul.find_all("li", recursive=False))
+
+    def _extract_contract_type(self, soup: BeautifulSoup) -> str | None:
+        """The contract-type badge (e.g. "detachering", "freelance") is a
+        pill-shaped <span class="... rounded-full ...">, distinct from the
+        similarly-worded site navigation link <a href="/detachering">
+        Detachering</a> — the tag itself (span vs a) already disambiguates
+        the two, so no text-based guessing is needed."""
+        badge = soup.select_one("span.rounded-full")
+        return self._clean_text(badge)
 
     @staticmethod
     def _extract_source_job_id(url: str) -> str:

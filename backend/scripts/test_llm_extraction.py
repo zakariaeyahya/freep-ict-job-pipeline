@@ -6,6 +6,12 @@ GROQ_API_KEY is a temporary stand-in for a not-yet-pulled local Ollama
 model, this avoids burning API quota/rate limits on the whole corpus. Swap
 client=GroqClient() back to client=OllamaClient() once a model is pulled.
 
+Note: contract_type is expected to stay null here — this script only feeds
+hard_requirements/wishes, but contract_type ("detachering"/"freelance") in
+the real pipeline comes from JobParser._extract_contract_type's HTML badge
+selector, not from the LLM (see pipeline.py's _enrich_with_llm_fields: the
+parser's value always wins when present).
+
 Usage:
     python scripts/test_llm_extraction.py
 """

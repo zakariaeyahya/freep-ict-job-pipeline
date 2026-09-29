@@ -87,3 +87,17 @@ def test_enrich_with_llm_fields_leaves_job_at_defaults_when_nothing_is_extracted
     assert job.education == []
     assert job.contract_type is None
     assert job.zzp_allowed is None
+
+
+def test_enrich_with_llm_fields_never_overrides_the_parsers_contract_type_badge() -> None:
+    """contract_type from the HTML badge (JobParser._extract_contract_type,
+    a real structured field) must win over the LLM's text-based guess —
+    the LLM only fills the gap when the parser found no badge at all."""
+    pipeline = ScanPipeline.__new__(ScanPipeline)
+    pipeline._field_extractor = _StubFieldExtractor(ExtractedFields(contract_type="freelance"))
+    job = _bare_job()
+    job.contract_type = "detachering"  # as if JobParser already found the badge
+
+    pipeline._enrich_with_llm_fields(job)
+
+    assert job.contract_type == "detachering"
