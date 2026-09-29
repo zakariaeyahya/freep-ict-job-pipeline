@@ -2,7 +2,10 @@
 
 Discovers, fetches, parses, validates and stores ICT job listings from
 Freep. See `../freep-ict-job-pipeline/CLAUDE.md` for the full data
-contract and API surface this backend must implement.
+contract and API surface this backend must implement, and
+[`DISCOVERY_REPORT.md`](DISCOVERY_REPORT.md) for the source analysis,
+robots.txt/terms-of-use review, and open legal/operational questions
+(brief §9.1, §7).
 
 ## Structure
 
