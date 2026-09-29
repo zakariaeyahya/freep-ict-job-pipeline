@@ -2,11 +2,13 @@
 JobRecord shape the data contract publishes (job_record.schema.json,
 mirroring freep-ict-job-pipeline/src/lib/contracts/job.ts and brief §4.2).
 
-The pipeline does not populate profile/commercial/engagement/procedure or
-attachments yet (see CLAUDE.md "Not done yet") — those groups are emitted
-with their null/empty defaults rather than fabricated, per the
-never-fabricate-content rule. As the parser grows to extract more fields,
-extend the mapping here; the schema already expects the full shape.
+profile/engagement/procedure are populated from LlmFieldExtractor's output
+(stored on JobCurrent — see storage/models.py), which only ever contains
+values verified as exact substrings of the source text. Fields with no
+reliable signal on Freep's pages at all (nationality_constraints,
+supplier_conditions, interview_window, submission_instructions) stay null
+rather than fabricated, per the never-fabricate-content rule. attachments
+stays empty — no attachment mechanism was found on Freep's job pages.
 """
 
 from __future__ import annotations
@@ -27,10 +29,10 @@ class JobRecordMapper:
             "publication": self._publication(job),
             "delivery": self._delivery(job),
             "selection": self._selection(job),
-            "profile": self._empty_profile(),
+            "profile": self._profile(job),
             "commercial": self._commercial(job),
-            "engagement": self._empty_engagement(),
-            "procedure": self._empty_procedure(),
+            "engagement": self._engagement(job),
+            "procedure": self._procedure(job),
             "quality": self._quality(job),
             "version": self._version(job),
             "attachments": [],
@@ -88,14 +90,14 @@ class JobRecordMapper:
         }
 
     @staticmethod
-    def _empty_profile() -> dict:
+    def _profile(job: Any) -> dict:
         return {
-            "education": [],
-            "experience": [],
-            "skills": [],
-            "methods": [],
-            "certifications": [],
-            "languages": [],
+            "education": job.education or [],
+            "experience": job.experience or [],
+            "skills": job.skills or [],
+            "methods": job.methods or [],
+            "certifications": job.certifications or [],
+            "languages": job.languages or [],
         }
 
     @staticmethod
@@ -109,21 +111,25 @@ class JobRecordMapper:
         }
 
     @staticmethod
-    def _empty_engagement() -> dict:
+    def _engagement(job: Any) -> dict:
         return {
-            "contract_type": None,
-            "zzp_allowed": None,
-            "screening": None,
-            "vog": None,
+            "contract_type": job.contract_type,
+            "zzp_allowed": job.zzp_allowed,
+            "screening": job.screening,
+            "vog": job.vog,
+            # No reliable per-offer signal found on Freep's pages for
+            # these two (see DISCOVERY_REPORT.md) — never fabricated.
             "nationality_constraints": None,
             "supplier_conditions": None,
         }
 
     @staticmethod
-    def _empty_procedure() -> dict:
+    def _procedure(job: Any) -> dict:
         return {
-            "positions": None,
-            "max_candidates": None,
+            "positions": job.positions,
+            "max_candidates": job.max_candidates,
+            # No reliable per-offer signal found on Freep's pages for
+            # these two (see DISCOVERY_REPORT.md) — never fabricated.
             "interview_window": None,
             "submission_instructions": None,
         }

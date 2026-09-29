@@ -33,3 +33,22 @@ class ParsedJob(BaseModel):
     description_original: str | None = None
     hard_requirements: list[str] = []
     wishes: list[str] = []
+
+    # Profile/engagement/procedure signals (brief §4.2) extracted from the
+    # free-text requirements/wishes/description via a local LLM
+    # (LlmFieldExtractor) — Freep does not expose these as separate HTML
+    # fields. Every value here is a verified exact substring of the source
+    # text (never a paraphrase); anything the LLM could not ground in the
+    # source is left at its empty/null default, not fabricated.
+    education: list[str] = []
+    experience: list[str] = []
+    skills: list[str] = []
+    methods: list[str] = []
+    certifications: list[str] = []
+    languages: list[str] = []
+    contract_type: str | None = None
+    zzp_allowed: bool | None = None
+    screening: str | None = None
+    vog: bool | None = None
+    positions: int | None = None
+    max_candidates: int | None = None

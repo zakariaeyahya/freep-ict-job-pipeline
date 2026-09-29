@@ -17,6 +17,7 @@ from config.settings import FREEP_START_URL, HTTP_REQUEST_DELAY_SECONDS
 from src.freep_pipeline.contracts.job_record_mapper import JobRecordMapper
 from src.freep_pipeline.contracts.schema_validator import SchemaValidator, job_record_validator
 from src.freep_pipeline.discovery.freep_discovery import FreepDiscovery
+from src.freep_pipeline.extraction.llm_field_extractor import LlmFieldExtractor
 from src.freep_pipeline.fetching.http_client import FreepHttpClient
 from src.freep_pipeline.models.job import ParsedJob, RawJobLink
 from src.freep_pipeline.models.scan import RouteVisit, ScanReport
@@ -42,6 +43,7 @@ class ScanPipeline:
         repository: JobRepository | None = None,
         schema_validator: SchemaValidator | None = None,
         record_mapper: JobRecordMapper | None = None,
+        field_extractor: LlmFieldExtractor | None = None,
     ) -> None:
         self._discovery = discovery or FreepDiscovery()
         self._http_client = http_client or FreepHttpClient()
@@ -50,6 +52,7 @@ class ScanPipeline:
         self._repository = repository or JobRepository()
         self._schema_validator = schema_validator or job_record_validator()
         self._record_mapper = record_mapper or JobRecordMapper()
+        self._field_extractor = field_extractor or LlmFieldExtractor()
 
     def run(self) -> str:
         """Run one full scan: discover links, fetch+parse each job, validate,
@@ -173,6 +176,7 @@ class ScanPipeline:
             try:
                 soup = self._http_client.get_detail_soup(link.source_url)
                 job = self._parser.parse(soup, link.source_url)
+                self._enrich_with_llm_fields(job)
                 parsed_jobs.append(job)
             except Exception as exc:
                 logger.exception("Failed to fetch/parse %s", link.source_url)
@@ -181,6 +185,26 @@ class ScanPipeline:
             time.sleep(HTTP_REQUEST_DELAY_SECONDS)
 
         return parsed_jobs
+
+    def _enrich_with_llm_fields(self, job: ParsedJob) -> None:
+        """Best-effort: never blocks or fails the scan if the LLM is down
+        or returns something ungrounded (LlmFieldExtractor already
+        verifies every value against the source text)."""
+        extracted = self._field_extractor.extract(
+            title=job.title or "", hard_requirements=job.hard_requirements, wishes=job.wishes
+        )
+        job.education = extracted.education
+        job.experience = extracted.experience
+        job.skills = extracted.skills
+        job.methods = extracted.methods
+        job.certifications = extracted.certifications
+        job.languages = extracted.languages
+        job.contract_type = extracted.contract_type
+        job.zzp_allowed = extracted.zzp_allowed
+        job.screening = extracted.screening
+        job.vog = extracted.vog
+        job.positions = extracted.positions
+        job.max_candidates = extracted.max_candidates
 
     @staticmethod
     def _count_change(report: ScanReport, change_type: str) -> None:

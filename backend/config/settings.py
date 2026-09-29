@@ -91,3 +91,17 @@ KEYCLOAK_JWKS_URL = f"{KEYCLOAK_ISSUER_URL}/protocol/openid-connect/certs"
 # token's `aud` claim must include this value, or the token was not
 # actually issued for this API and must be rejected.
 KEYCLOAK_API_AUDIENCE = os.environ.get("KEYCLOAK_API_AUDIENCE", "freep-pipeline-api")
+
+# --------------------------------------------------------------------------
+# LLM field extraction (Ollama, image ollama/ollama:latest, local — no
+# secrets leave the machine)
+# --------------------------------------------------------------------------
+
+# Extracts profile/engagement/procedure signals (brief §4.2) from free-text
+# requirements/wishes/description that the HTML parser cannot reliably
+# split into structured fields (e.g. "Geen ZZP", "afgeronde HBO opleiding"
+# are prose, not separate HTML elements). Runs locally, never sends job
+# text to a third-party API.
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b-instruct")
+OLLAMA_TIMEOUT_SECONDS = 60

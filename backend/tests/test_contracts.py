@@ -85,6 +85,18 @@ class _FakeJobCurrent:
             description_original="Build and maintain cloud infrastructure.",
             hard_requirements=["Minimaal 5 jaar ervaring met Java"],
             wishes=["Kennis van Kubernetes is een pre"],
+            education=[],
+            experience=[],
+            skills=[],
+            methods=[],
+            certifications=[],
+            languages=[],
+            contract_type=None,
+            zzp_allowed=None,
+            screening=None,
+            vog=None,
+            positions=None,
+            max_candidates=None,
             rate_min=80,
             rate_max=100,
             hours_min=32,
@@ -117,6 +129,34 @@ def test_mapper_output_for_closed_job_validates_against_schema() -> None:
     result = job_record_validator().validate(record)
     assert result.is_valid, f"mapper output failed schema validation: {result.errors}"
     assert record["version"]["observation_state"] == "closed"
+
+
+def test_mapper_output_with_populated_profile_engagement_procedure_validates_against_schema() -> None:
+    """AC's profile/engagement/procedure groups, once LlmFieldExtractor
+    populates them, must still validate — proves the schema's shape for
+    these groups matches what the mapper actually emits, not just the
+    empty-defaults case covered above."""
+    job = _FakeJobCurrent(
+        education=["HBO werk- en denkniveau"],
+        experience=["5 jaar ervaring als architect"],
+        skills=["Azure", "Kubernetes"],
+        methods=["Scrum"],
+        certifications=["AZ-900"],
+        languages=["Nederlands", "Engels"],
+        contract_type="detachering",
+        zzp_allowed=False,
+        screening="VOG vereist",
+        vog=True,
+        positions=2,
+        max_candidates=5,
+    )
+    record = JobRecordMapper().to_job_record(job)
+
+    result = job_record_validator().validate(record)
+    assert result.is_valid, f"mapper output failed schema validation: {result.errors}"
+    assert record["profile"]["skills"] == ["Azure", "Kubernetes"]
+    assert record["engagement"]["zzp_allowed"] is False
+    assert record["procedure"]["positions"] == 2
 
 
 def test_schema_rejects_invalid_change_type() -> None:

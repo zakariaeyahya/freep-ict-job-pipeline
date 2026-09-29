@@ -19,6 +19,7 @@ from sqlalchemy.orm import sessionmaker
 from src.freep_pipeline.contracts.job_record_mapper import JobRecordMapper
 from src.freep_pipeline.contracts.schema_validator import job_record_validator
 from src.freep_pipeline.discovery.freep_discovery import DiscoveryResult
+from src.freep_pipeline.extraction.llm_field_extractor import ExtractedFields
 from src.freep_pipeline.models.job import ParsedJob, RawJobLink
 from src.freep_pipeline.pipeline import ScanPipeline
 from src.freep_pipeline.storage.repository import JobRepository
@@ -26,6 +27,14 @@ from src.freep_pipeline.storage.scan_models import ScanRun
 from src.freep_pipeline.validation.validator import JobValidator
 
 JOB_SLUGS = ["job-a", "job-b"]
+
+
+class _NoOpFieldExtractor:
+    """Stands in for LlmFieldExtractor so this suite never makes a real
+    network call to Ollama — it tests publish-blocking, not extraction."""
+
+    def extract(self, title, hard_requirements, wishes) -> ExtractedFields:
+        return ExtractedFields()
 
 
 def _job_url(slug: str) -> str:
@@ -87,6 +96,7 @@ def _make_pipeline(sqlite_url: str, record_mapper) -> ScanPipeline:
         repository=JobRepository(database_url=sqlite_url),
         schema_validator=job_record_validator(),
         record_mapper=record_mapper,
+        field_extractor=_NoOpFieldExtractor(),
     )
 
 

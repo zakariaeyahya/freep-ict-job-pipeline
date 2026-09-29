@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -40,6 +40,25 @@ class JobObservation(Base):
     hard_requirements: Mapped[list] = mapped_column(JSON, default=list)
     wishes: Mapped[list] = mapped_column(JSON, default=list)
 
+    # Profile/engagement/procedure signals (brief §4.2), extracted by
+    # LlmFieldExtractor from the free-text fields above — Freep does not
+    # expose these as separate HTML fields. Every value is a verified
+    # exact substring of the source text (see llm_field_extractor.py);
+    # empty/null when nothing could be grounded in the source, never a
+    # fabricated guess.
+    education: Mapped[list] = mapped_column(JSON, default=list)
+    experience: Mapped[list] = mapped_column(JSON, default=list)
+    skills: Mapped[list] = mapped_column(JSON, default=list)
+    methods: Mapped[list] = mapped_column(JSON, default=list)
+    certifications: Mapped[list] = mapped_column(JSON, default=list)
+    languages: Mapped[list] = mapped_column(JSON, default=list)
+    contract_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    zzp_allowed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    screening: Mapped[str | None] = mapped_column(Text, nullable=True)
+    vog: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    positions: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_candidates: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     content_hash: Mapped[str] = mapped_column(String(64))
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -68,6 +87,24 @@ class JobCurrent(Base):
 
     hard_requirements: Mapped[list] = mapped_column(JSON, default=list)
     wishes: Mapped[list] = mapped_column(JSON, default=list)
+
+    # Profile/engagement/procedure signals (brief §4.2) from the most
+    # recent observation's LlmFieldExtractor pass — see JobObservation for
+    # the extraction/anti-fabrication rationale. Overwritten on every
+    # upsert like the other flat fields above; the immutable history lives
+    # in job_observations, not here.
+    education: Mapped[list] = mapped_column(JSON, default=list)
+    experience: Mapped[list] = mapped_column(JSON, default=list)
+    skills: Mapped[list] = mapped_column(JSON, default=list)
+    methods: Mapped[list] = mapped_column(JSON, default=list)
+    certifications: Mapped[list] = mapped_column(JSON, default=list)
+    languages: Mapped[list] = mapped_column(JSON, default=list)
+    contract_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    zzp_allowed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    screening: Mapped[str | None] = mapped_column(Text, nullable=True)
+    vog: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    positions: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_candidates: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Structured values derived from the free-text rate/hours_per_week
     # fields (JobNormalizer). Never replaces the original text — brief
