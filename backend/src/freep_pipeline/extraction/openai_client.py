@@ -1,7 +1,6 @@
 """Primary LLM provider for field extraction. Same
-generate_json(system_prompt, user_prompt) -> dict interface as
-GroqClient/OllamaClient, so LlmFieldExtractor does not need to know which
-provider it's talking to.
+generate_json(system_prompt, user_prompt) -> dict interface as GroqClient,
+so LlmFieldExtractor does not need to know which provider it's talking to.
 
 Sends job text to a third-party API — OPENAI_API_KEY must be treated as a
 real secret (env var only, never committed).
@@ -47,9 +46,9 @@ class OpenAiClient:
     def generate_json(self, system_prompt: str, user_prompt: str) -> dict:
         """Some OpenAI models (reasoning-family, e.g. gpt-6-astra) reject a
         non-default temperature outright, so temperature is omitted here
-        rather than pinned to 0 — unlike GroqClient/OllamaClient, exact
-        determinism across scans isn't guaranteed for every possible model
-        configured via OPENAI_MODEL."""
+        rather than pinned to 0 — unlike GroqClient, exact determinism
+        across scans isn't guaranteed for every possible model configured
+        via OPENAI_MODEL."""
         try:
             completion = self._client.chat.completions.create(
                 model=self._model,

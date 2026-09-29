@@ -4,8 +4,8 @@ sample (../../offre.md's first offer, "Senior mendix developer"/Rechtspraak).
 Deliberately NOT a pytest test and NOT run against the full dataset: keeps
 the check fast and focused on one known example while the prompt/
 extraction logic is still being validated. Defaults to --provider
-fallback, the same Groq-primary/Ollama-fallback client the real pipeline
-uses (FallbackLlmClient); pass --provider groq or --provider ollama to
+fallback, the same OpenAI-primary/Groq-fallback client the real pipeline
+uses (FallbackLlmClient); pass --provider openai or --provider groq to
 force one provider in isolation for debugging.
 
 Note: contract_type is expected to stay null here — this script only feeds
@@ -15,7 +15,7 @@ selector, not from the LLM (see pipeline.py's _enrich_with_llm_fields: the
 parser's value always wins when present).
 
 Usage:
-    python scripts/test_llm_extraction.py [--provider fallback|groq|ollama]
+    python scripts/test_llm_extraction.py [--provider fallback|openai|groq]
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.freep_pipeline.extraction.fallback_llm_client import FallbackLlmClient
 from src.freep_pipeline.extraction.groq_client import GroqClient
 from src.freep_pipeline.extraction.llm_field_extractor import LlmFieldExtractor
-from src.freep_pipeline.extraction.ollama_client import OllamaClient
+from src.freep_pipeline.extraction.openai_client import OpenAiClient
 
 TITLE = "Senior mendix developer"
 
@@ -51,8 +51,8 @@ WISHES = [
 def main(provider: str) -> None:
     if provider == "groq":
         client = GroqClient()
-    elif provider == "ollama":
-        client = OllamaClient()
+    elif provider == "openai":
+        client = OpenAiClient()
     else:
         client = FallbackLlmClient()
     extractor = LlmFieldExtractor(client=client)
@@ -64,6 +64,6 @@ def main(provider: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--provider", choices=["fallback", "ollama", "groq"], default="fallback")
+    parser.add_argument("--provider", choices=["fallback", "openai", "groq"], default="fallback")
     args = parser.parse_args()
     main(args.provider)

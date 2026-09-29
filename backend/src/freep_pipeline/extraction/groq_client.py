@@ -1,13 +1,10 @@
-"""Temporary stand-in for OllamaClient, used only while the local Ollama
-model is still being pulled (docker exec ... ollama pull). Same
-generate_json(system_prompt, user_prompt) -> dict interface, so
-LlmFieldExtractor does not need to know which provider it's talking to.
+"""Fallback LLM provider for field extraction, used when OpenAI is
+unavailable. Same generate_json(system_prompt, user_prompt) -> dict
+interface as OpenAiClient, so LlmFieldExtractor does not need to know
+which provider it's talking to.
 
-Unlike Ollama this sends job text to a third-party API — GROQ_API_KEY must
-be treated as a real secret (env var only, never committed) and this
-client should be swapped back to OllamaClient once a model is pulled
-locally (brief's "no third-party API" preference for this extraction
-step).
+Sends job text to a third-party API — GROQ_API_KEY must be treated as a
+real secret (env var only, never committed).
 """
 
 from __future__ import annotations
