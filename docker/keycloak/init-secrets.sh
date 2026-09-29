@@ -9,7 +9,7 @@
 set -eu
 
 KCADM="/opt/keycloak/bin/kcadm.sh"
-SERVER_URL="http://localhost:8080"
+SERVER_URL="http://keycloak:8080"
 
 : "${KEYCLOAK_ADMIN:?KEYCLOAK_ADMIN is required}"
 : "${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}"
