@@ -99,6 +99,7 @@ services:
     environment:
       FRONTEND_DOMAIN: ${FRONTEND_DOMAIN:-localhost}
       API_DOMAIN: ${API_DOMAIN:-api.localhost}
+      AUTH_DOMAIN: ${AUTH_DOMAIN:-auth.localhost}
     ports:
       - "80:80"
       - "443:443"
@@ -109,6 +110,7 @@ services:
     depends_on:
       - backend
       - frontend
+      - keycloak
     restart: unless-stopped
 
   ollama:
