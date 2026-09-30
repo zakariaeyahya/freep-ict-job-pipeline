@@ -7,30 +7,42 @@ function count(jobs: JobRecord[], predicate: (job: JobRecord) => boolean): numbe
 
 type Accent = "lavender" | "mint" | "sky" | "violet" | "rose" | "turquoise";
 
-const ACCENT_CLASSES: Record<Accent, { bg: string; icon: string }> = {
+const ACCENT_CLASSES: Record<Accent, { bg: string; icon: string; card: string; glow: string }> = {
   lavender: {
     bg: "bg-indigo-50 dark:bg-indigo-500/10",
     icon: "text-indigo-600 dark:text-indigo-300",
+    card: "from-indigo-50/80 via-white to-white dark:from-indigo-500/15 dark:via-zinc-900 dark:to-zinc-900",
+    glow: "bg-indigo-300/50 dark:bg-indigo-400/25",
   },
   mint: {
     bg: "bg-emerald-50 dark:bg-emerald-500/10",
     icon: "text-emerald-600 dark:text-emerald-300",
+    card: "from-emerald-50/80 via-white to-white dark:from-emerald-500/15 dark:via-zinc-900 dark:to-zinc-900",
+    glow: "bg-emerald-300/50 dark:bg-emerald-400/25",
   },
   sky: {
     bg: "bg-sky-50 dark:bg-sky-500/10",
     icon: "text-sky-600 dark:text-sky-300",
+    card: "from-sky-50/80 via-white to-white dark:from-sky-500/15 dark:via-zinc-900 dark:to-zinc-900",
+    glow: "bg-sky-300/50 dark:bg-sky-400/25",
   },
   violet: {
     bg: "bg-violet-50 dark:bg-violet-500/10",
     icon: "text-violet-600 dark:text-violet-300",
+    card: "from-violet-50/80 via-white to-white dark:from-violet-500/15 dark:via-zinc-900 dark:to-zinc-900",
+    glow: "bg-violet-300/50 dark:bg-violet-400/25",
   },
   rose: {
     bg: "bg-rose-50 dark:bg-rose-500/10",
     icon: "text-rose-600 dark:text-rose-300",
+    card: "from-rose-50/80 via-white to-white dark:from-rose-500/15 dark:via-zinc-900 dark:to-zinc-900",
+    glow: "bg-rose-300/50 dark:bg-rose-400/25",
   },
   turquoise: {
     bg: "bg-teal-50 dark:bg-teal-500/10",
     icon: "text-teal-600 dark:text-teal-300",
+    card: "from-teal-50/80 via-white to-white dark:from-teal-500/15 dark:via-zinc-900 dark:to-zinc-900",
+    glow: "bg-teal-300/50 dark:bg-teal-400/25",
   },
 };
 
@@ -145,15 +157,19 @@ export function JobsSummary({ jobs }: { jobs: JobRecord[] }) {
         return (
           <div
             key={stat.label}
-            className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900"
+            className={`relative isolate flex flex-col gap-3 overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br px-4 py-4 dark:border-zinc-800 ${accent.card}`}
           >
             <span
               aria-hidden="true"
-              className={`flex h-8 w-8 items-center justify-center rounded-full ${accent.bg} ${accent.icon}`}
+              className={`pointer-events-none absolute -right-5 -top-6 h-24 w-24 rounded-full opacity-70 blur-2xl ${accent.glow}`}
+            />
+            <span
+              aria-hidden="true"
+              className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full ${accent.bg} ${accent.icon}`}
             >
               {stat.icon}
             </span>
-            <div>
+            <div className="relative z-10">
               <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{stat.label}</dt>
               <dd className="mt-1 text-[28px] font-bold leading-none text-zinc-900 dark:text-zinc-50">
                 {stat.value}

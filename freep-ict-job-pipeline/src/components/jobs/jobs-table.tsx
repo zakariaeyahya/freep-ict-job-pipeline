@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import type { ChangeType, JobRecord, JobStatus } from "@/lib/contracts/job";
 import { formatDateTime } from "@/lib/format";
@@ -27,6 +28,7 @@ const CHANGE_OPTIONS: Array<{ value: ChangeType | "all"; label: string }> = [
 const PAGE_SIZE = 8;
 
 export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<JobStatus | "all">("all");
   const [changeType, setChangeType] = useState<ChangeType | "all">("all");
@@ -152,9 +154,6 @@ export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
           <thead className="bg-zinc-50 dark:bg-zinc-900">
             <tr>
               <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                ID
-              </th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 Title
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -176,16 +175,23 @@ export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
           </thead>
           <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
             {paginated.map((job) => (
-              <tr key={job.identity.internal_job_id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/60">
+              <tr
+                key={job.identity.internal_job_id}
+                onClick={(event) => {
+                  // The title link handles its own navigation (keyboard, new tab).
+                  if ((event.target as HTMLElement).closest("a")) return;
+                  router.push(`/jobs/${job.identity.internal_job_id}`);
+                }}
+                className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+              >
                 <td className="px-4 py-3 text-sm">
                   <Link
                     href={`/jobs/${job.identity.internal_job_id}`}
                     className="font-medium text-violet-700 underline-offset-2 hover:underline focus-visible:underline dark:text-violet-300"
                   >
-                    {job.identity.internal_job_id}
+                    {job.core.title}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100">{job.core.title}</td>
                 <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
                   {job.core.client_name ?? "Unknown"}
                 </td>
@@ -206,7 +212,7 @@ export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
 
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
                   No jobs match your search and filters.
                 </td>
               </tr>
