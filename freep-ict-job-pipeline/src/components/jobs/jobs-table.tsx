@@ -182,7 +182,7 @@ export function JobsTable({ jobs }: { jobs: JobRecord[] }) {
                   if ((event.target as HTMLElement).closest("a")) return;
                   router.push(`/jobs/${job.identity.internal_job_id}`);
                 }}
-                className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                className="cursor-pointer transition-colors hover:bg-violet-50 focus-within:bg-violet-50 dark:hover:bg-violet-500/10 dark:focus-within:bg-violet-500/10"
               >
                 <td className="px-4 py-3 text-sm">
                   <Link

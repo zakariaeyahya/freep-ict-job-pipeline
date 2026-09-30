@@ -5,7 +5,7 @@ import { ConvergeIcon } from "@/components/icons";
 
 export function ConvergenceRounds({ rounds }: { rounds: ConvergenceRound[] }) {
   return (
-    <div className="w-full rounded-2xl border border-[#E5EAF2] bg-white p-5 lg:w-80 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="w-full rounded-2xl border border-[#E5EAF2] bg-white p-5 transition-colors hover:border-violet-200 hover:bg-violet-50/40 lg:w-80 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-violet-500/30 dark:hover:bg-violet-500/5">
       <SectionHeader icon={<ConvergeIcon />} title="Convergence rounds" />
       <ol className="mt-5 flex flex-col">
         {rounds.map((round, index) => (

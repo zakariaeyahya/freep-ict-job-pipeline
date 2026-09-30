@@ -23,7 +23,7 @@ function Field({ icon, label, value }: { icon: ReactNode; label: string; value: 
 
 export function ScanConfigCard({ scan }: { scan: ScanRun }) {
   return (
-    <div className="flex-1 rounded-2xl border border-[#E5EAF2] bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="flex-1 rounded-2xl border border-[#E5EAF2] bg-white p-5 transition-colors hover:border-violet-200 hover:bg-violet-50/40 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-violet-500/30 dark:hover:bg-violet-500/5">
       <SectionHeader icon={<CalendarIcon />} title="Scan window & configuration" />
       <dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
         <div className="flex flex-col gap-4">

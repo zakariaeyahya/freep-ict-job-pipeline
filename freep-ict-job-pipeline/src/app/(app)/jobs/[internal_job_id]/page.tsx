@@ -57,7 +57,7 @@ export default function JobDetailPage({
       </div>
 
       {/* Core fields */}
-      <div className="rounded-2xl border border-[#E5EAF2] bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-2xl border border-[#E5EAF2] bg-white p-5 transition-colors hover:border-violet-200 hover:bg-violet-50/40 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-violet-500/30 dark:hover:bg-violet-500/5">
         <SectionHeader icon={<BriefcaseIcon />} title="Core details" />
         <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <DetailField label="Client" value={job.core.client_name} />
@@ -100,7 +100,7 @@ export default function JobDetailPage({
       </div>
 
       {/* Selection: hard_requirements, wishes, award_criteria, competencies — never merged (AC06) */}
-      <div className="rounded-2xl border border-[#E5EAF2] bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-2xl border border-[#E5EAF2] bg-white p-5 transition-colors hover:border-violet-200 hover:bg-violet-50/40 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-violet-500/30 dark:hover:bg-violet-500/5">
         <SectionHeader icon={<ListIcon />} title="Selection criteria" />
         <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
           <EvidencedList title="Hard requirements" items={job.selection.hard_requirements} />
@@ -111,7 +111,7 @@ export default function JobDetailPage({
       </div>
 
       {/* Attachments */}
-      <div className="rounded-2xl border border-[#E5EAF2] bg-[#FBFCFF] p-5 dark:border-zinc-800 dark:bg-zinc-900/60">
+      <div className="rounded-2xl border border-[#E5EAF2] bg-[#FBFCFF] p-5 transition-colors hover:border-violet-200 hover:bg-violet-50/40 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-violet-500/30 dark:hover:bg-violet-500/5">
         <SectionHeader icon={<FileIcon />} title="Attachments" />
         <div className="mt-4">
           <AttachmentsList attachments={job.attachments} />
@@ -119,7 +119,7 @@ export default function JobDetailPage({
       </div>
 
       {/* Quality */}
-      <div className="rounded-2xl border border-[#E5EAF2] bg-[#FBFCFF] p-5 dark:border-zinc-800 dark:bg-zinc-900/60">
+      <div className="rounded-2xl border border-[#E5EAF2] bg-[#FBFCFF] p-5 transition-colors hover:border-violet-200 hover:bg-violet-50/40 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-violet-500/30 dark:hover:bg-violet-500/5">
         <SectionHeader icon={<ShieldCheckIcon />} title="Quality" />
         <div className="mt-4">
           <QualityBlock quality={job.quality} />
@@ -127,7 +127,7 @@ export default function JobDetailPage({
       </div>
 
       {/* Source */}
-      <div className="rounded-2xl border border-[#E5EAF2] bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-2xl border border-[#E5EAF2] bg-white p-5 transition-colors hover:border-violet-200 hover:bg-violet-50/40 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-violet-500/30 dark:hover:bg-violet-500/5">
         <SectionHeader icon={<DatabaseIcon />} title="Source" />
         <div className="mt-4">
           <SourceBlock job={job} />
@@ -135,7 +135,7 @@ export default function JobDetailPage({
       </div>
 
       {/* Version history */}
-      <div className="rounded-2xl border border-[#E5EAF2] bg-[#FBFCFF] p-5 dark:border-zinc-800 dark:bg-zinc-900/60">
+      <div className="rounded-2xl border border-[#E5EAF2] bg-[#FBFCFF] p-5 transition-colors hover:border-violet-200 hover:bg-violet-50/40 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-violet-500/30 dark:hover:bg-violet-500/5">
         <SectionHeader icon={<HistoryIcon />} title="Version history" />
         <div className="mt-4">
           {versionsState.status === "loading" ? <LoadingState label="Loading version history…" /> : null}

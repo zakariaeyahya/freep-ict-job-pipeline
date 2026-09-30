@@ -120,7 +120,7 @@ export default function ScanReportPage() {
             <ConvergenceRounds rounds={scan.convergence_rounds} />
           </div>
 
-          <div className="rounded-2xl border border-[#E5EAF2] bg-[#FBFCFF] p-5 dark:border-zinc-800 dark:bg-zinc-900/60">
+          <div className="rounded-2xl border border-[#E5EAF2] bg-[#FBFCFF] p-5 transition-colors hover:border-violet-200 hover:bg-violet-50/40 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-violet-500/30 dark:hover:bg-violet-500/5">
             <SectionHeader icon={<BarChartIcon />} title="Counts summary" />
             <div className="mt-4">
               <CountsSummary counts={scan.counts} />

@@ -5,7 +5,7 @@ import { MoreIcon, RouteIcon } from "@/components/icons";
 
 export function RoutesTable({ routes }: { routes: RouteVisit[] }) {
   return (
-    <div className="rounded-2xl border border-[#E5EAF2] bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="rounded-2xl border border-[#E5EAF2] bg-white p-5 transition-colors hover:border-violet-200 hover:bg-violet-50/40 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-violet-500/30 dark:hover:bg-violet-500/5">
       <SectionHeader
         icon={<RouteIcon />}
         title="Routes"
@@ -40,7 +40,7 @@ export function RoutesTable({ routes }: { routes: RouteVisit[] }) {
           </thead>
           <tbody className="divide-y divide-[#E5EAF2] bg-white dark:divide-zinc-800 dark:bg-zinc-900">
             {routes.map((route, index) => (
-              <tr key={route.url} className="hover:bg-[#FBFCFF] dark:hover:bg-zinc-800/40">
+              <tr key={route.url} className="transition-colors hover:bg-violet-50 dark:hover:bg-violet-500/10">
                 <td className="px-3 py-3 text-sm text-[#64748B] dark:text-zinc-400">{index + 1}</td>
                 <td className="max-w-xs truncate px-3 py-3 font-mono text-xs text-[#102A5C] dark:text-zinc-300" title={route.url}>
                   {route.url}
